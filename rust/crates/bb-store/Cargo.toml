@@ -11,5 +11,14 @@ publish.workspace = true
 sqlx.workspace = true
 object_store.workspace = true
 
+[features]
+# Tests that need a live PostgreSQL (`BB_STORE_TEST_DATABASE_URL`):
+# `cargo test -p bb-store --features live`.
+live = []
+
+[dev-dependencies]
+bb-allure.workspace = true
+tokio.workspace = true
+
 [lints]
 workspace = true
