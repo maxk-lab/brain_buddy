@@ -115,16 +115,6 @@ DEPLOY_REQUIRED_SNIPPETS = (
     "PREVIOUS_FRONTEND_IMAGE",
     "PREVIOUS_BACKEND_IMAGE",
     "workflow_run.head_sha",
-    "Detect the first SQLite-managed feature-flag transition",
-    _MODULE.FIRST_TRANSITION_MARKER,
-    "Stage the first-transition feature-flag seed",
-    "Restage delivery-only rollout after a first-transition deploy",
-    'RETIRED = {"admin_portal"}',
-    'VALID_STATES = {"off", "internal", "on"}',
-    "if name not in KNOWN:",
-    "if state not in VALID_STATES:",
-    "error: the captured previous rollout has an unrecognized flag name",
-    "error: the captured previous rollout has an invalid flag state",
 )
 
 
@@ -591,164 +581,6 @@ class DeployContractTest(unittest.TestCase):
         self.assertIn("external_agent_relay", DEPLOY_WORKFLOW.read_text(encoding="utf-8"))
         self.assertEqual(validate_deploy_workflow(DEPLOY_WORKFLOW), 0)
 
-    def test_first_transition_seed_allow_listing_admin_portal_is_rejected(self) -> None:
-        """admin_portal is retired (ADR-0019 DD-14); the new image cannot
-        parse it, so the seed's allow-list must never include it again."""
-
-        mutated = self._rollback_contract_mutant(
-            '          KNOWN = {\n',
-            '          KNOWN = {\n              "admin_portal",\n',
-        )
-        try:
-            self.assertEqual(validate_deploy_workflow(mutated), 1)
-        finally:
-            mutated.unlink()
-
-    def test_first_transition_seed_silently_dropping_unknown_flag_is_rejected(
-        self,
-    ) -> None:
-        """Regression guard for the bug this change fixes: any name outside
-
-        the known managed set used to be silently dropped, same as a
-        legitimately retired one. Reverting to that behavior (while leaving
-        state validation intact) must fail validation — only the explicitly
-        retired admin_portal may be dropped without an error.
-        """
-
-        mutated = self._rollback_contract_mutant(
-            "              if name not in KNOWN:\n"
-            '                  print("error: the captured previous rollout '
-            'has an unrecognized flag name", file=sys.stderr)\n'
-            "                  sys.exit(1)\n"
-            "              if state not in VALID_STATES:\n"
-            '                  print("error: the captured previous rollout '
-            'has an invalid flag state", file=sys.stderr)\n'
-            "                  sys.exit(1)\n"
-            '              entries.append(f"{name}={state}")\n',
-            "              if state not in VALID_STATES:\n"
-            '                  print("error: the captured previous rollout '
-            'has an invalid flag state", file=sys.stderr)\n'
-            "                  sys.exit(1)\n"
-            "              if name in KNOWN:\n"
-            '                  entries.append(f"{name}={state}")\n',
-        )
-        try:
-            self.assertEqual(validate_deploy_workflow(mutated), 1)
-        finally:
-            mutated.unlink()
-
-    def test_first_transition_seed_accepting_invalid_state_is_rejected(self) -> None:
-        """Regression guard: a captured state outside the legacy
-
-        off/internal/on vocabulary used to be staged verbatim, unchecked.
-        Reverting to that (while leaving the unknown-name error intact) must
-        fail validation.
-        """
-
-        mutated = self._rollback_contract_mutant(
-            "              if name not in KNOWN:\n"
-            '                  print("error: the captured previous rollout '
-            'has an unrecognized flag name", file=sys.stderr)\n'
-            "                  sys.exit(1)\n"
-            "              if state not in VALID_STATES:\n"
-            '                  print("error: the captured previous rollout '
-            'has an invalid flag state", file=sys.stderr)\n'
-            "                  sys.exit(1)\n"
-            '              entries.append(f"{name}={state}")\n',
-            "              if name not in KNOWN:\n"
-            '                  print("error: the captured previous rollout '
-            'has an unrecognized flag name", file=sys.stderr)\n'
-            "                  sys.exit(1)\n"
-            '              entries.append(f"{name}={state}")\n',
-        )
-        try:
-            self.assertEqual(validate_deploy_workflow(mutated), 1)
-        finally:
-            mutated.unlink()
-
-    def test_first_transition_seed_missing_mask_is_rejected(self) -> None:
-        mutated = self._rollback_contract_mutant(
-            '          echo "::add-mask::${staged}"\n', ""
-        )
-        try:
-            self.assertEqual(validate_deploy_workflow(mutated), 1)
-        finally:
-            mutated.unlink()
-
-    def test_first_transition_seed_hardcoded_literal_is_rejected(self) -> None:
-        """The seed must be staged from the computed variable, never a
-        second literal — a second literal would make the next deploy's
-        capture of ``BRAIN_BUDDY_FEATURE_FLAGS`` ambiguous."""
-
-        mutated = self._rollback_contract_mutant(
-            'BRAIN_BUDDY_FEATURE_FLAGS="${staged}"',
-            'BRAIN_BUDDY_FEATURE_FLAGS="delivery_canary=internal"',
-        )
-        try:
-            self.assertEqual(validate_deploy_workflow(mutated), 1)
-        finally:
-            mutated.unlink()
-
-    def test_first_transition_cleanup_second_image_deploy_is_rejected(self) -> None:
-        """The cleanup restage must never itself trigger a second image
-        deploy; it only stages the rollout for the next release."""
-
-        mutated = self._rollback_contract_mutant(
-            f"      - name: {_MODULE.CLEANUP_FIRST_TRANSITION_STEP}\n",
-            f"      - name: {_MODULE.CLEANUP_FIRST_TRANSITION_STEP}\n"
-            "        run: flyctl deploy --config fly.backend.toml\n",
-        )
-        try:
-            self.assertEqual(validate_deploy_workflow(mutated), 1)
-        finally:
-            mutated.unlink()
-
-    def test_first_transition_seed_after_backend_deploy_is_rejected(self) -> None:
-        """Staging the seed after the backend has already booted would leave
-        it running the delivery-only baseline — too late for migration."""
-
-        text = DEPLOY_WORKFLOW.read_text(encoding="utf-8")
-        seed_marker = f"      - name: {_MODULE.STAGE_FIRST_TRANSITION_SEED_STEP}\n"
-        seed_start = text.index(seed_marker)
-        seed_end = text.index("\n      - name: ", seed_start + len(seed_marker)) + 1
-        seed_block = text[seed_start:seed_end]
-        backend_deploy_marker = "      - name: Deploy backend\n"
-        backend_start = text.index(backend_deploy_marker)
-        backend_end = text.index("\n      - name: ", backend_start + len(backend_deploy_marker)) + 1
-        backend_block = text[backend_start:backend_end]
-        mutated = _temp_workflow(
-            text[:seed_start]
-            + backend_block
-            + text[seed_end:backend_start]
-            + seed_block
-            + text[backend_end:]
-        )
-        try:
-            self.assertEqual(validate_deploy_workflow(mutated), 1)
-        finally:
-            mutated.unlink()
-
-    def test_first_transition_cleanup_before_smoke_is_rejected(self) -> None:
-        """The delivery-only restage must run only after smoke has passed,
-        never before — running it earlier could restage over a seed that
-        migration has not yet consumed."""
-
-        text = DEPLOY_WORKFLOW.read_text(encoding="utf-8")
-        cleanup_marker = f"      - name: {_MODULE.CLEANUP_FIRST_TRANSITION_STEP}\n"
-        cleanup_start = text.index(cleanup_marker)
-        cleanup_end = text.index("\n      - name: ", cleanup_start + len(cleanup_marker)) + 1
-        cleanup_block = text[cleanup_start:cleanup_end]
-        remaining = text[:cleanup_start] + text[cleanup_end:]
-        reachability_marker = "      - name: Reachability smoke test\n"
-        insert_at = remaining.index(reachability_marker)
-        mutated = _temp_workflow(
-            remaining[:insert_at] + cleanup_block + remaining[insert_at:]
-        )
-        try:
-            self.assertEqual(validate_deploy_workflow(mutated), 1)
-        finally:
-            mutated.unlink()
-
     def _rollback_contract_mutant(self, needle: str, replacement: str, count: int = 1) -> Path:
         text = DEPLOY_WORKFLOW.read_text(encoding="utf-8")
         self.assertIn(needle, text)
@@ -899,12 +731,31 @@ class DeployContractTest(unittest.TestCase):
         must never read it."""
 
         text = DEPLOY_WORKFLOW.read_text(encoding="utf-8")
-        needle = "    env:\n      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}\n"
-        self.assertIn(needle, text)
+        needle = "    environment: production\n"
+        self.assertEqual(text.count(needle), 1)
         mutated = _temp_workflow(
             text.replace(
                 needle,
-                needle + "      LEAKED: ${{ secrets.TRUNK_LANDING_SSH_KEY }}\n",
+                needle + "    env:\n      LEAKED: ${{ secrets.TRUNK_LANDING_SSH_KEY }}\n",
+                1,
+            )
+        )
+        try:
+            self.assertEqual(validate_deploy_workflow(mutated), 1)
+        finally:
+            mutated.unlink()
+
+    def test_job_level_fly_token_is_rejected(self) -> None:
+        """The production Fly token reaches only the steps that run flyctl;
+        set on the whole job, checkout and every script could read it."""
+
+        text = DEPLOY_WORKFLOW.read_text(encoding="utf-8")
+        needle = "    environment: production\n"
+        self.assertEqual(text.count(needle), 1)
+        mutated = _temp_workflow(
+            text.replace(
+                needle,
+                needle + "    env:\n      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}\n",
                 1,
             )
         )

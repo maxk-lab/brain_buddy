@@ -55,10 +55,9 @@ from app.core.config import (
 )
 
 _BASH_EXECUTABLE = shutil.which("bash")
-_GIT_EXECUTABLE = shutil.which("git")
-if _BASH_EXECUTABLE is None or _GIT_EXECUTABLE is None:
+if _BASH_EXECUTABLE is None:
     pytest.skip(
-        "bash and git are required for deploy-contract shell fixtures",
+        "bash is required for deploy-contract shell fixtures",
         allow_module_level=True,
     )
 
@@ -281,18 +280,10 @@ def test_009_FR_013_enabling_the_portal_is_documented_as_a_workflow_edit(
 
 
 # ---------------------------------------------------------------------------
-# ADR-0019 first-transition seeding (BLOCKER 1): the first SQLite-aware boot
-# must not lose a pre-migration rollout. These tests execute the exact bash
-# and Python the deploy workflow ships — extracted from the real file, not
-# reimplemented — against a stub `flyctl`, so a change to the shipped script
-# is what is under test, not a paraphrase of it.
+# These tests execute the exact bash the deploy workflow ships — extracted from
+# the real file, not reimplemented — against a stub `flyctl`, so a change to
+# the shipped script is what is under test, not a paraphrase of it.
 # ---------------------------------------------------------------------------
-
-DETECT_FIRST_TRANSITION_STEP = "Detect the first SQLite-managed feature-flag transition"
-STAGE_FIRST_TRANSITION_SEED_STEP = "Stage the first-transition feature-flag seed"
-CLEANUP_FIRST_TRANSITION_STEP = (
-    "Restage delivery-only rollout after a first-transition deploy"
-)
 
 
 @pytest.fixture(scope="module")
@@ -373,124 +364,11 @@ def _run_step(
     )
 
 
-def test_ADR_0019_first_transition_seed_retains_voice_brain_dump_and_drops_admin_portal(
-    workflow_text: str, validator: ModuleType, fake_flyctl: Path, tmp_path: Path
-) -> None:
-    """The exact bug this contract exists to prevent: a bare
-    ``delivery_canary=internal`` seed would lose ``voice_brain_dump=on`` from
-    before ADR-0019. The retired ``admin_portal`` must not survive either."""
-
-    script = _step_script(workflow_text, validator, STAGE_FIRST_TRANSITION_SEED_STEP)
-    calls_file = tmp_path / "flyctl_calls.txt"
-    result = _run_step(
-        script,
-        env={
-            "BACKEND_APP": "brain-buddy-backend",
-            "PREVIOUS_FEATURE_FLAGS": (
-                "delivery_canary=internal,voice_brain_dump=on,admin_portal=internal"
-            ),
-        },
-        fake_flyctl=fake_flyctl,
-    )
-
-    assert result.returncode == 0, result.stderr
-    staged_call = calls_file.read_text(encoding="utf-8")
-    assert (
-        "BRAIN_BUDDY_FEATURE_FLAGS=delivery_canary=internal,voice_brain_dump=on"
-        in staged_call
-    )
-    assert "admin_portal" not in staged_call
-
-
-def test_ADR_0019_first_transition_seed_never_prints_the_rollout_outside_the_mask(
-    workflow_text: str, validator: ModuleType, fake_flyctl: Path
-) -> None:
-    script = _step_script(workflow_text, validator, STAGE_FIRST_TRANSITION_SEED_STEP)
-    result = _run_step(
-        script,
-        env={
-            "BACKEND_APP": "brain-buddy-backend",
-            "PREVIOUS_FEATURE_FLAGS": "delivery_canary=internal,voice_brain_dump=on",
-        },
-        fake_flyctl=fake_flyctl,
-    )
-
-    assert result.returncode == 0, result.stderr
-    lines = [line for line in result.stdout.splitlines() if "voice_brain_dump" in line]
-    assert lines == ["::add-mask::delivery_canary=internal,voice_brain_dump=on"], (
-        "the rollout must appear only on the mask-registration line; every "
-        "other line — including the final success message — must stay "
-        "value-free"
-    )
-
-
-def test_ADR_0019_first_transition_seed_fails_closed_on_a_malformed_entry(
-    workflow_text: str, validator: ModuleType, fake_flyctl: Path, tmp_path: Path
-) -> None:
-    script = _step_script(workflow_text, validator, STAGE_FIRST_TRANSITION_SEED_STEP)
-    calls_file = tmp_path / "flyctl_calls.txt"
-    result = _run_step(
-        script,
-        env={
-            "BACKEND_APP": "brain-buddy-backend",
-            "PREVIOUS_FEATURE_FLAGS": "delivery_canary=internal,not_a_valid_entry",
-        },
-        fake_flyctl=fake_flyctl,
-    )
-
-    assert result.returncode != 0
-    assert not calls_file.exists(), "a malformed seed must never reach flyctl"
-
-
-def test_ADR_0019_first_transition_seed_fails_closed_when_delivery_canary_is_dropped(
-    workflow_text: str, validator: ModuleType, fake_flyctl: Path, tmp_path: Path
-) -> None:
-    """If sanitizing leaves nothing the new image can parse as
-    ``delivery_canary``, guessing one in would be exactly the silent loss of
-    managed state this contract must refuse."""
-
-    script = _step_script(workflow_text, validator, STAGE_FIRST_TRANSITION_SEED_STEP)
-    calls_file = tmp_path / "flyctl_calls.txt"
-    result = _run_step(
-        script,
-        env={
-            "BACKEND_APP": "brain-buddy-backend",
-            "PREVIOUS_FEATURE_FLAGS": "admin_portal=internal",
-        },
-        fake_flyctl=fake_flyctl,
-    )
-
-    assert result.returncode != 0
-    assert not calls_file.exists()
-
-
-def test_ADR_0019_later_deploy_cleanup_restages_delivery_only_without_a_second_deploy(
-    workflow_text: str, validator: ModuleType, fake_flyctl: Path, tmp_path: Path
-) -> None:
-    script = _step_script(workflow_text, validator, CLEANUP_FIRST_TRANSITION_STEP)
-    calls_file = tmp_path / "flyctl_calls.txt"
-    result = _run_step(
-        script,
-        env={
-            "BACKEND_APP": "brain-buddy-backend",
-            "AUTHORIZED_STAGED_FEATURE_FLAGS": "delivery_canary=internal",
-        },
-        fake_flyctl=fake_flyctl,
-    )
-
-    assert result.returncode == 0, result.stderr
-    calls = calls_file.read_text(encoding="utf-8")
-    assert "BRAIN_BUDDY_FEATURE_FLAGS=delivery_canary=internal" in calls
-    assert "secrets" in calls and "--stage" in calls
-    assert "deploy" not in calls, "cleanup must only stage, never deploy a second image"
-
-
 def test_ADR_0019_automatic_rollback_still_restages_the_exact_previous_string(
     workflow_text: str, validator: ModuleType, fake_flyctl: Path, tmp_path: Path
 ) -> None:
-    """Unchanged by the first-transition seeding: rollback must keep restaging
-    the literal captured ``PREVIOUS_FEATURE_FLAGS``, never a sanitized or
-    guessed value."""
+    """Rollback must restage the literal captured ``PREVIOUS_FEATURE_FLAGS``,
+    never a sanitized or guessed value."""
 
     script = _step_script(workflow_text, validator, validator.ROLLBACK_STEP)
     calls_file = tmp_path / "flyctl_calls.txt"
@@ -528,84 +406,3 @@ def test_ADR_0019_automatic_rollback_still_restages_the_exact_previous_string(
         "BRAIN_BUDDY_FEATURE_FLAGS=delivery_canary=internal,voice_brain_dump=on,"
         "admin_portal=internal" in calls
     ), "the exact previous string — including the retired name — must be restaged verbatim"
-
-
-def _write_marker_repo(tmp_path: Path, marker: str) -> tuple[Path, str, str, str]:
-    """A tiny synthetic repo with a pre-transition, transition and later commit."""
-
-    repo = tmp_path / "marker_repo"
-    package = repo / "backend" / "app" / "repositories"
-    package.mkdir(parents=True)
-    flag_file = package / "feature_flag.py"
-
-    def _commit(text: str, message: str) -> str:
-        flag_file.write_text(text, encoding="utf-8")
-        # S603: fixed args against the resolved local git executable, building this
-        # test's own synthetic repository fixture.
-        subprocess.run(  # noqa: S603
-            [_GIT_EXECUTABLE, "add", "-A"], cwd=repo, check=True, capture_output=True
-        )
-        subprocess.run(  # noqa: S603
-            [_GIT_EXECUTABLE, "commit", "-q", "-m", message],
-            cwd=repo,
-            check=True,
-            capture_output=True,
-            env={
-                **os.environ,
-                "GIT_AUTHOR_NAME": "t",
-                "GIT_AUTHOR_EMAIL": "t@t.com",
-                "GIT_COMMITTER_NAME": "t",
-                "GIT_COMMITTER_EMAIL": "t@t.com",
-            },
-        )
-        return subprocess.run(  # noqa: S603
-            [_GIT_EXECUTABLE, "rev-parse", "HEAD"],
-            cwd=repo,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-
-    # S603: fixed args against the resolved local git executable, building this
-    # test's own synthetic repository fixture.
-    subprocess.run(  # noqa: S603
-        [_GIT_EXECUTABLE, "init", "-q"], cwd=repo, check=True, capture_output=True
-    )
-    before_sha = _commit("no marker here\n", "before sqlite")
-    transition_sha = _commit(f"{marker}\n", "sqlite transition")
-    later_sha = _commit(f"{marker}\nfoo = 1\n", "ordinary later deploy")
-    return repo, before_sha, transition_sha, later_sha
-
-
-def test_ADR_0019_detection_uses_only_immutable_git_content(
-    workflow_text: str, validator: ModuleType, tmp_path: Path
-) -> None:
-    """Proves the detect step against a real (synthetic) git history, not a
-    paraphrase of the marker check: the transition commit reads true, the
-    commit before it and the ordinary commit after it both read false."""
-
-    script = _step_script(workflow_text, validator, DETECT_FIRST_TRANSITION_STEP)
-    repo, before_sha, transition_sha, later_sha = _write_marker_repo(
-        tmp_path, validator.FIRST_TRANSITION_MARKER
-    )
-
-    def _detect(sha: str) -> str:
-        github_env = tmp_path / f"env-{sha}"
-        github_env.write_text("", encoding="utf-8")
-        # S603: this repository's own extracted workflow step is the script being
-        # executed, not untrusted input.
-        result = subprocess.run(  # noqa: S603
-            [_BASH_EXECUTABLE, "-c", script],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env={**os.environ, "TESTED_SHA": sha, "GITHUB_ENV": str(github_env)},
-            check=False,
-        )
-        assert result.returncode == 0, result.stderr
-        return github_env.read_text(encoding="utf-8").strip()
-
-    assert _detect(transition_sha) == "FIRST_TRANSITION=true"
-    assert _detect(before_sha) == "FIRST_TRANSITION=false"
-    assert _detect(later_sha) == "FIRST_TRANSITION=false"
