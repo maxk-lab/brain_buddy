@@ -1,9 +1,11 @@
 //! Schema ownership (027 PR-21, T021; research R3, data-model.md "Rules").
 //!
-//! Parses every `sqlx` query in `src/<module>` and fails when a module touches a schema it
-//! does not own, or calls another module's store code. The one allowed exception is
-//! `control::mark_applied`. The migration/skeleton tests at the bottom need a live
-//! PostgreSQL and run only with `--features live`.
+//! Scans every string literal in `src/<module>/` and fails when a module names a schema it
+//! does not own, however the SQL reaches sqlx (`sqlx::query`, `use sqlx::query`, `raw_sql`,
+//! `QueryBuilder`, a `const SQL`, `query_file!`). The `control` schema literal therefore
+//! appears only inside `src/control/`; other modules reach it through the Rust call
+//! `control::mark_applied`, the one allowed cross-module store call. The migration/skeleton
+//! tests at the bottom need a live PostgreSQL and run only with `--features live`.
 
 use bb_allure::allure_test;
 use std::fs;
@@ -23,70 +25,109 @@ const OWNERS: [(&str, &[&str]); 7] = [
     ("tasks", &["tasks", "sync", "jobs"]),
 ];
 
-const QUERY_FNS: [&str; 8] = [
-    "query!",
-    "query_as!",
-    "query_scalar!",
-    "query(",
-    "query_as::<",
-    "query_as(",
-    "query_scalar::<",
-    "query_scalar(",
+/// The `tasks` owner group's sub-namespaces, each a directory of its own.
+const TASKS_SUBMODULES: [&str; 8] = [
+    "items",
+    "organize",
+    "review",
+    "sync",
+    "devices",
+    "transfers",
+    "snapshots",
+    "jobs",
 ];
 
 fn all_schemas() -> Vec<&'static str> {
     OWNERS.iter().flat_map(|(_, s)| s.iter().copied()).collect()
 }
 
-/// The first string literal (plain or raw) at or after byte `from`, and where it ends.
-fn next_literal(src: &str, from: usize) -> Option<(String, usize)> {
-    let quote = from + src[from..].find('"')?;
-    let before = src[..quote].trim_end_matches('#');
-    let hashes = quote - before.len();
-    let raw = before.ends_with('r');
-    let start = quote + 1;
-    let close = if raw {
-        let terminator = format!("\"{}", "#".repeat(hashes));
-        start + src[start..].find(&terminator)?
-    } else {
-        let bytes = src.as_bytes();
-        let mut j = start;
-        while bytes[j] != b'"' {
-            j += if bytes[j] == b'\\' { 2 } else { 1 };
-        }
-        j
-    };
-    Some((src[start..close].to_string(), close))
+/// End (exclusive) of the plain string literal whose opening quote is at `open`.
+fn plain_end(bytes: &[u8], open: usize) -> usize {
+    let mut j = open + 1;
+    while j < bytes.len() && bytes[j] != b'"' {
+        j += if bytes[j] == b'\\' { 2 } else { 1 };
+    }
+    j
 }
 
-/// The SQL text of every `sqlx::query*` call in `src`.
-fn queries(src: &str) -> Vec<String> {
-    let mut found = Vec::new();
-    for name in QUERY_FNS {
-        let needle = format!("sqlx::{name}");
-        let mut at = 0;
-        while let Some(p) = src[at..].find(&needle) {
-            let after = at + p + needle.len();
-            if let Some((sql, end)) = next_literal(src, after) {
-                found.push(sql);
-                at = end;
-            } else {
-                break;
+/// Every string literal (plain, byte and raw) in `src`, skipping comments and char
+/// literals. Returns the literal bodies, unescaped only as far as quotes are concerned.
+fn literals(src: &str) -> Vec<String> {
+    let bytes = src.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        let prev_ident = i > 0 && (bytes[i - 1].is_ascii_alphanumeric() || bytes[i - 1] == b'_');
+        if src[i..].starts_with("//") {
+            i += src[i..].find('\n').unwrap_or(src.len() - i);
+        } else if src[i..].starts_with("/*") {
+            let mut depth = 0;
+            while i < bytes.len() {
+                if src[i..].starts_with("/*") {
+                    depth += 1;
+                    i += 2;
+                } else if src[i..].starts_with("*/") {
+                    depth -= 1;
+                    i += 2;
+                    if depth == 0 {
+                        break;
+                    }
+                } else {
+                    i += 1;
+                }
             }
+        } else if (b == b'r' || (b == b'b' && bytes.get(i + 1) == Some(&b'r'))) && !prev_ident {
+            let mut j = i + if b == b'b' { 2 } else { 1 };
+            let hashes_start = j;
+            while bytes.get(j) == Some(&b'#') {
+                j += 1;
+            }
+            if bytes.get(j) == Some(&b'"') {
+                let terminator = format!("\"{}", "#".repeat(j - hashes_start));
+                let body = j + 1;
+                let close = src[body..]
+                    .find(&terminator)
+                    .map_or(src.len(), |p| body + p);
+                out.push(src[body..close].to_string());
+                i = close + terminator.len();
+            } else {
+                i += 1;
+            }
+        } else if b == b'"' {
+            let close = plain_end(bytes, i);
+            out.push(src[i + 1..close.min(src.len())].to_string());
+            i = close + 1;
+        } else if b == b'\'' {
+            // A char literal ('"', '\'', 'x') is skipped whole; a lifetime is just a tick.
+            if bytes.get(i + 1) == Some(&b'\\') {
+                i += 2 + src[i + 2..].find('\'').unwrap_or(0) + 1;
+            } else if bytes.get(i + 2) == Some(&b'\'') {
+                i += 3;
+            } else {
+                i += 1;
+            }
+        } else {
+            i += 1;
         }
     }
-    found
+    out
 }
 
-/// Schemas referenced as `schema.relation` in `sql`.
-fn schemas_in(sql: &str) -> Vec<String> {
-    let lower = sql.to_lowercase();
+/// Schemas referenced as `schema.relation` (or `schema.{placeholder}`) in `text`, with SQL
+/// identifier quoting and Rust escapes removed.
+fn schemas_in(text: &str) -> Vec<String> {
+    let lower: String = text
+        .to_lowercase()
+        .chars()
+        .filter(|c| *c != '"' && *c != '\\')
+        .collect();
     let mut out = Vec::new();
     for token in lower.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '.')) {
         if let Some((schema, rel)) = token.split_once('.')
-            && !rel.is_empty()
             && all_schemas().contains(&schema)
             && !out.iter().any(|s| s == schema)
+            && (!rel.is_empty() || lower.contains(&format!("{schema}.{{")))
         {
             out.push(schema.to_string());
         }
@@ -94,20 +135,40 @@ fn schemas_in(sql: &str) -> Vec<String> {
     out
 }
 
-/// Violations in one source file of `module`: foreign-schema SQL, and Rust paths into
-/// another module's store code (except `control::mark_applied`).
-fn violations(module: &str, src: &str) -> Vec<String> {
+/// Schema references in one source file: every literal, plus the content of any `.sql` file
+/// a literal points at (`query_file!`, `include_str!`), resolved next to the source file.
+fn schema_refs(src: &str, dir: &Path) -> Vec<String> {
+    let mut found = Vec::new();
+    for lit in literals(src) {
+        found.extend(schemas_in(&lit));
+        if lit.ends_with(".sql") {
+            let text = [
+                dir.join(&lit),
+                Path::new(env!("CARGO_MANIFEST_DIR")).join(&lit),
+            ]
+            .iter()
+            .find_map(|p| fs::read_to_string(p).ok());
+            match text {
+                Some(text) => found.extend(schemas_in(&text)),
+                None => found.push(format!("unresolved-sql-file:{lit}")),
+            }
+        }
+    }
+    found
+}
+
+/// Violations in one source file of `module`: a literal naming a foreign schema, and Rust
+/// paths into another module's store code (except `control::mark_applied`).
+fn violations(module: &str, src: &str, dir: &Path) -> Vec<String> {
     let owned = OWNERS
         .iter()
         .find(|(m, _)| *m == module)
         .map(|(_, s)| *s)
         .expect("known module");
     let mut out = Vec::new();
-    for sql in queries(src) {
-        for schema in schemas_in(&sql) {
-            if !owned.contains(&schema.as_str()) {
-                out.push(format!("{module}: query touches schema `{schema}`: {sql}"));
-            }
+    for schema in schema_refs(src, dir) {
+        if !owned.contains(&schema.as_str()) {
+            out.push(format!("{module}: literal touches schema `{schema}`"));
         }
     }
     for (other, _) in OWNERS.iter().filter(|(m, _)| *m != module) {
@@ -142,17 +203,15 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
+fn src_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
+}
+
 fn module_sources(module: &str) -> Vec<(PathBuf, String)> {
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut files = Vec::new();
-    let single = src.join(format!("{module}.rs"));
-    if single.exists() {
-        files.push(single);
-    }
-    let dir = src.join(module);
-    if dir.is_dir() {
-        rust_files(&dir, &mut files);
-    }
+    let dir = src_dir().join(module);
+    assert!(dir.is_dir(), "module `{module}` must be a directory");
+    rust_files(&dir, &mut files);
     files
         .into_iter()
         .map(|p| {
@@ -163,27 +222,65 @@ fn module_sources(module: &str) -> Vec<(PathBuf, String)> {
 }
 
 #[test]
+fn store_027_fr_002_every_module_is_a_directory_with_a_mod_file() {
+    allure_test!(
+        EPIC,
+        FEATURE,
+        "027-FR-002 module schema ownership",
+        "Every store namespace is a directory so slices never share a file",
+        |t| {
+            t.step(
+                "each module and tasks sub-namespace has <name>/mod.rs",
+                || {
+                    for (module, _) in OWNERS {
+                        let dir = src_dir().join(module);
+                        assert!(dir.join("mod.rs").is_file(), "src/{module}/mod.rs missing");
+                        assert!(
+                            !src_dir().join(format!("{module}.rs")).exists(),
+                            "src/{module}.rs must not exist beside src/{module}/"
+                        );
+                    }
+                    for sub in TASKS_SUBMODULES {
+                        let dir = src_dir().join("tasks").join(sub);
+                        assert!(
+                            dir.join("mod.rs").is_file(),
+                            "src/tasks/{sub}/mod.rs missing"
+                        );
+                    }
+                },
+            );
+        }
+    );
+}
+
+#[test]
 fn store_027_fr_002_every_module_touches_only_its_own_schemas() {
     allure_test!(
         EPIC,
         FEATURE,
         "027-FR-002 module schema ownership",
-        "Every bb-store module queries only its own schemas",
+        "Every bb-store module names only its own schemas",
         |t| {
-            let mut parsed = 0;
+            let mut control_refs = 0;
             t.step("scan every module's sources", || {
                 for (module, _) in OWNERS {
                     let sources = module_sources(module);
                     assert!(!sources.is_empty(), "no sources for module {module}");
                     for (path, text) in sources {
-                        parsed += queries(&text).len();
-                        let bad = violations(module, &text);
+                        let dir = path.parent().expect("parent");
+                        if module == "control" {
+                            control_refs += schema_refs(&text, dir).len();
+                        }
+                        let bad = violations(module, &text, dir);
                         assert!(bad.is_empty(), "{}: {bad:?}", path.display());
                     }
                 }
             });
-            t.step("the parser really saw the control query", || {
-                assert!(parsed >= 1, "query parser found no sqlx queries at all");
+            t.step("the scanner really saw the control query", || {
+                assert!(
+                    control_refs >= 1,
+                    "literal scanner found no schema reference"
+                );
             });
         }
     );
@@ -197,29 +294,57 @@ fn store_027_fr_002_planted_cross_schema_query_is_rejected() {
         "027-FR-002 module schema ownership",
         "A planted cross-schema query fails the ownership check",
         |t| {
-            t.step("plain and raw literals, runtime and macro forms", || {
+            let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+            let bad = |module: &str, src: &str| violations(module, src, dir).len();
+            t.step("every way of reaching sqlx is caught", || {
                 let plain = r#"let _ = sqlx::query("SELECT 1 FROM tasks.tasks");"#;
-                assert_eq!(violations("identity", plain).len(), 1);
-                let raw =
-                    "sqlx::query_as::<_, (i64,)>(r#\"SELECT seq FROM Control.control_applied\"#)";
-                assert_eq!(violations("crt", raw).len(), 1);
+                assert_eq!(bad("identity", plain), 1);
+                let imported = r#"use sqlx::query; query("DELETE FROM crt.trees");"#;
+                assert_eq!(bad("identity", imported), 1);
+                let raw_fn = r##"sqlx::raw_sql(r#"SELECT 1 FROM Control.control_applied"#)"##;
+                assert_eq!(bad("crt", raw_fn), 1);
+                let builder = r#"QueryBuilder::new("INSERT INTO voice.operations ")"#;
+                assert_eq!(bad("agents", builder), 1);
+                let konst = "const SQL: &str = \"SELECT 1 FROM agents.runs\";\nsqlx::query(SQL);";
+                assert_eq!(bad("voice", konst), 1);
                 let mac = r#"sqlx::query!("DELETE FROM voice.operations WHERE owner_id = $1", id)"#;
-                assert_eq!(violations("agents", mac).len(), 1);
+                assert_eq!(bad("agents", mac), 1);
+                let quoted = r#"query("SELECT 1 FROM \"crt\".\"trees\"")"#;
+                assert_eq!(bad("flags", quoted), 1);
+                let formatted = r#"query(&format!("SELECT 1 FROM crt.{table}"))"#;
+                assert_eq!(bad("flags", formatted), 1);
+            });
+            t.step(
+                "the control schema literal is only allowed in control",
+                || {
+                    let sql =
+                        r#"sqlx::query("INSERT INTO control.control_applied (seq) VALUES (1)")"#;
+                    assert_eq!(bad("crt", sql), 1);
+                    assert_eq!(bad("control", sql), 0);
+                },
+            );
+            t.step("comments and prose are not queries", || {
+                assert_eq!(bad("crt", "// reads crt.trees\n/* identity.users */"), 0);
+                assert_eq!(bad("crt", r#"let c = '"'; let m = "no tasks. done";"#), 0);
+            });
+            t.step("a query_file! target is scanned too", || {
+                let missing = r#"sqlx::query_file!("no/such/query.sql")"#;
+                assert_eq!(bad("crt", missing), 1);
             });
             t.step("the Tasks owner group may span tasks, sync and jobs", || {
                 let sql = r#"sqlx::query("INSERT INTO sync.change_records SELECT * FROM jobs.jobs JOIN tasks.tasks USING (id)")"#;
-                assert!(violations("tasks", sql).is_empty());
-                assert_eq!(violations("tasks", r#"sqlx::query("SELECT 1 FROM crt.trees")"#).len(), 1);
+                assert_eq!(bad("tasks", sql), 0);
+                assert_eq!(bad("tasks", r#"sqlx::query("SELECT 1 FROM crt.trees")"#), 1);
             });
             t.step(
                 "only control::mark_applied is an allowed cross-module call",
                 || {
                     let ok = "bb_store::control::mark_applied(&mut tx, 1).await?;";
-                    assert!(violations("crt", ok).is_empty());
-                    assert!(violations("crt", "crate::control::mark_applied(tx, 1)").is_empty());
-                    assert_eq!(violations("crt", "crate::control::other(tx)").len(), 1);
-                    assert_eq!(violations("crt", "use crate::identity::lookup;").len(), 1);
-                    assert!(violations("crt", "use crate::identity_x::a;").is_empty());
+                    assert_eq!(bad("crt", ok), 0);
+                    assert_eq!(bad("crt", "crate::control::mark_applied(tx, 1)"), 0);
+                    assert_eq!(bad("crt", "crate::control::other(tx)"), 1);
+                    assert_eq!(bad("crt", "use crate::identity::lookup;"), 1);
+                    assert_eq!(bad("crt", "use crate::identity_x::a;"), 0);
                 },
             );
         }
