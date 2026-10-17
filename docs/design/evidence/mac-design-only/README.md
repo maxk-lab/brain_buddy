@@ -43,8 +43,11 @@ through the existing menus. Rendered PNGs take priority over older prose.
   Edit→Undo restored 1. `done-after.jpg` is a fresh capture of that binary.
 - 476 Swift Testing tests /57 suites and 8 XCTest tests passed on the Done build.
   The earlier broad local verification stopped before backend tests because its
-  environment lacked pytest-xdist. Full CI must pass for this PR head.
-- The integration branch uses the same product source tree as the Done build;
+  environment lacked pytest-xdist. Full CI must pass for this PR head. The integration review confirmed and fixed
+  the agent-inspector Escape regression; the shared close action still uses the
+  existing save/navigation guard.
+- The integration branch uses the Done build product source tree plus a bounded
+  review fix: shared Save/Escape shortcuts wrap both ordinary and agent inspectors;
   historical planning documents are removed from scope and the design text is
   corrected to describe the retained single-stage password form.
 

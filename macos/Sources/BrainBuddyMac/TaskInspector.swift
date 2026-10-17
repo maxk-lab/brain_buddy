@@ -106,11 +106,14 @@ struct TaskInspector: View {
 
     @ViewBuilder
     var body: some View {
-        if let runSection {
-            runSection
-        } else {
-            ordinaryInspector
+        Group {
+            if let runSection {
+                runSection
+            } else {
+                ordinaryInspector
+            }
         }
+        .background { shortcuts }
     }
 
     private var ordinaryInspector: some View {
@@ -143,7 +146,6 @@ struct TaskInspector: View {
                 }
                 // presentation-region-end
         }
-        .background { shortcuts }
         // presentation-region: task inspector popover and sheets
         .sheet(isPresented: $showingProjectCreator, onDismiss: {
             newProjectEditorID = UUID().uuidString
