@@ -170,14 +170,18 @@ struct DecisionFormView: View {
         .disabled(isSaving)
         .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
+        // Hiding the system Back also turns off the edge-swipe back, so only do it
+        // while unsaved text needs the FR-052 confirmation.
+        .navigationBarBackButtonHidden(isDirty)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    requestLeave(.back)
-                } label: {
-                    Label("Back", systemImage: "chevron.backward")
-                        .labelStyle(.titleAndIcon)
+            if isDirty {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        requestLeave(.back)
+                    } label: {
+                        Label("Back", systemImage: "chevron.backward")
+                            .labelStyle(.titleAndIcon)
+                    }
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
