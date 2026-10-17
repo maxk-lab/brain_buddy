@@ -277,7 +277,7 @@ struct VoiceCaptureView: View {
             text: VoiceSettingsCopy.needsWhisper(VoiceLanguagePlan.title(for: language)),
             action: VoiceSettingsCopy.openSettings,
             perform: {
-                VoiceSettingsRoute.request()
+                VoiceSettingsRoute.shared.request()
                 openSettings()
             })
     }

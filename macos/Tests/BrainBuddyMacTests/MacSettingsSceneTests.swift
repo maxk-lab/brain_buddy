@@ -148,9 +148,10 @@
                 #expect(MacSettingsView.selection(current: tab, voiceTabRequested: true) == .voice)
                 #expect(MacSettingsView.selection(current: tab, voiceTabRequested: false) == tab)
             }
-            VoiceSettingsRoute.request()
-            #expect(VoiceSettingsRoute.consume())
-            #expect(!VoiceSettingsRoute.consume(), "a request is read once")
+            let route = VoiceSettingsRoute()
+            route.request()
+            #expect(route.consume())
+            #expect(!route.consume(), "a request is read once")
         }
     }
 #endif

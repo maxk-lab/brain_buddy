@@ -71,7 +71,7 @@ struct MacSettingsView: View {
             showRequestedAgentsTab()
             showRequestedVoiceTab()
         }
-        .onReceive(NotificationCenter.default.publisher(for: VoiceSettingsRoute.notification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: VoiceSettingsRoute.notification, object: VoiceSettingsRoute.shared)) { _ in
             showRequestedVoiceTab()
         }
         .toolbar {
@@ -106,7 +106,7 @@ struct MacSettingsView: View {
 
     /// The voice sheet's "Download in Settings…" brings Voice forward (037-FR-005).
     private func showRequestedVoiceTab() {
-        selection = Self.selection(current: selection, voiceTabRequested: VoiceSettingsRoute.consume())
+        selection = Self.selection(current: selection, voiceTabRequested: VoiceSettingsRoute.shared.consume())
     }
 
     static func selection(current: MacSettingsTab, voiceTabRequested: Bool) -> MacSettingsTab {

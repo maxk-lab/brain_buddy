@@ -99,17 +99,19 @@ final class WhisperDownload: ObservableObject {
 
 /// Lets the voice sheet's "Download in Settings…" bring Settings › Voice forward, whether the
 /// Settings window is open or not (it reads the request when it appears or is told).
+/// One per app (`shared`); a test makes its own so an open Settings window cannot read its request.
 @MainActor
-enum VoiceSettingsRoute {
+final class VoiceSettingsRoute {
+    static let shared = VoiceSettingsRoute()
     static let notification = Notification.Name("BrainBuddyMac.openVoiceSettings")
-    private static var pending = false
+    private var pending = false
 
-    static func request() {
+    func request() {
         pending = true
-        NotificationCenter.default.post(name: notification, object: nil)
+        NotificationCenter.default.post(name: Self.notification, object: self)
     }
 
-    static func consume() -> Bool {
+    func consume() -> Bool {
         defer { pending = false }
         return pending
     }
