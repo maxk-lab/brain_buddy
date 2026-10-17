@@ -137,26 +137,10 @@ async fn get(client: &mut Client, path: &str) -> Reply {
     client.send(Method::GET, path, None).await.expect("get")
 }
 
-/// A new synthetic owner. The harness `TestControl::new_owner` mints a
-/// `.invalid` address, which the Python server's email validator refuses, so
-/// this file signs up with a synthetic, non-reserved domain itself.
+/// A new synthetic owner (an `example.com` address, signed up through an
+/// invite from the test control API; the password is `PASSWORD`).
 async fn signed_up(ctl: &TestControl, base: &Client) -> Owner {
-    let invites = ctl.invites(1).await.expect("invite");
-    let code = invites["codes"][0].as_str().expect("invite code");
-    let email = format!("sync-{}@conformance-mail.org", uuid());
-    let mut client = base.fresh();
-    let body = json!({ "email": email, "password": PASSWORD, "invite_code": code });
-    let reply = client
-        .post("/api/auth/signup", &body)
-        .await
-        .expect("signup");
-    assert!(
-        reply.status < 400,
-        "signup {}: {}",
-        reply.status,
-        reply.body
-    );
-    Owner { email, client }
+    ctl.new_owner(base).await.expect("synthetic owner")
 }
 
 /// Device ids are server-global (another owner's id reads as unknown), so a
