@@ -1,0 +1,4040 @@
+{
+  "source_sha": "a54f915c2e905ff7e614c2d245b20d6e8dfdddfa",
+  "method": "Explicit surface top-left at native 2x physical pixels. No scaling, warp, local optimization, masking or text replacement.",
+  "threshold": 16,
+  "screens": [
+    {
+      "id": "M01",
+      "title": "Welcome",
+      "available": true,
+      "reference": "../M01-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M01-light.jpg",
+      "note": "Fresh empty profile; initial capture field focused. No account required.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M01-Mac.png",
+        "sha256": "4587c3bf632157376cbe39c70d4d933614c331ebfb664a728d9119b414dc4fb6",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M01-light.jpg",
+        "sha256": "d98f48e262faef33e469a85d0911d5d94e61633c83e3d1b27dd7133a3477f740",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 152277,
+        "changed_percent": 3.7177001953124997,
+        "mean_absolute_rgb_error": 4.744187418619791,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              960,
+              288,
+              2112,
+              576
+            ],
+            "changed_pixels": 58607
+          },
+          {
+            "box": [
+              0,
+              0,
+              512,
+              704
+            ],
+            "changed_pixels": 42455
+          },
+          {
+            "box": [
+              960,
+              608,
+              2080,
+              736
+            ],
+            "changed_pixels": 19925
+          },
+          {
+            "box": [
+              0,
+              1504,
+              512,
+              1600
+            ],
+            "changed_pixels": 11442
+          },
+          {
+            "box": [
+              960,
+              96,
+              1376,
+              224
+            ],
+            "changed_pixels": 9736
+          },
+          {
+            "box": [
+              960,
+              768,
+              1792,
+              832
+            ],
+            "changed_pixels": 8788
+          },
+          {
+            "box": [
+              2464,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 671
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 653
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M02",
+      "title": "First capture",
+      "available": true,
+      "reference": "../M02-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M02-light.jpg",
+      "note": "Typed the exact approved Inbox sentence. Captured before Return.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M02-Mac.png",
+        "sha256": "ee9fa169614bee23d75db4b66cf05d58b23a16071e1d7d3deda90a27e08a09f6",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M02-light.jpg",
+        "sha256": "29e4bb5e0f8d4d95fd911fca96a1da943e594ae0d438675adb962f493d74c28b",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 114575,
+        "changed_percent": 2.7972412109375,
+        "mean_absolute_rgb_error": 3.50423974609375,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              512,
+              704
+            ],
+            "changed_pixels": 42453
+          },
+          {
+            "box": [
+              960,
+              96,
+              2112,
+              320
+            ],
+            "changed_pixels": 34193
+          },
+          {
+            "box": [
+              960,
+              320,
+              2112,
+              416
+            ],
+            "changed_pixels": 20127
+          },
+          {
+            "box": [
+              0,
+              1504,
+              512,
+              1600
+            ],
+            "changed_pixels": 11428
+          },
+          {
+            "box": [
+              1440,
+              480,
+              1536,
+              576
+            ],
+            "changed_pixels": 5050
+          },
+          {
+            "box": [
+              2464,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 671
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 653
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M03",
+      "title": "First step",
+      "available": true,
+      "reference": "../M03-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M03-light.jpg",
+      "note": "Typed Call Sam about the van. Capture toolbar absent as in M03; no AI flow added.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M03-Mac.png",
+        "sha256": "dfcb876ccd5b696e447ba305737b1a909f640dada74cc8dab6a172710a6bbe05",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M03-light.jpg",
+        "sha256": "f01097a02c67e67c9f70fa47f25b8203565b1812545654d029a845cad7f3351a",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 110787,
+        "changed_percent": 2.7047607421875,
+        "mean_absolute_rgb_error": 3.507499430338542,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              544,
+              704
+            ],
+            "changed_pixels": 41954
+          },
+          {
+            "box": [
+              1824,
+              224,
+              2528,
+              480
+            ],
+            "changed_pixels": 37125
+          },
+          {
+            "box": [
+              544,
+              96,
+              1760,
+              320
+            ],
+            "changed_pixels": 13827
+          },
+          {
+            "box": [
+              1824,
+              32,
+              2464,
+              192
+            ],
+            "changed_pixels": 7743
+          },
+          {
+            "box": [
+              0,
+              1504,
+              416,
+              1600
+            ],
+            "changed_pixels": 4002
+          },
+          {
+            "box": [
+              1824,
+              1472,
+              2176,
+              1568
+            ],
+            "changed_pixels": 3225
+          },
+          {
+            "box": [
+              1568,
+              128,
+              1760,
+              192
+            ],
+            "changed_pixels": 1545
+          },
+          {
+            "box": [
+              2208,
+              1504,
+              2336,
+              1536
+            ],
+            "changed_pixels": 647
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 358
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 355
+          },
+          {
+            "box": [
+              480,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 4
+          },
+          {
+            "box": [
+              1792,
+              0,
+              1824,
+              32
+            ],
+            "changed_pixels": 2
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M04",
+      "title": "Landing",
+      "available": true,
+      "reference": "../M04-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M04-light.jpg",
+      "note": "Confirmed the first step through the real save path. Landing card and tip are visible.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M04-Mac.png",
+        "sha256": "58c26dc4bd002ca442d27ea4ee7c9df5e32a795990490427f97ed7e0b9228330",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M04-light.jpg",
+        "sha256": "5c3258a598745557a57975c66f8ceaf0331be486ea4430b465080552a923fca4",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 185238,
+        "changed_percent": 4.522412109375,
+        "mean_absolute_rgb_error": 4.19055126953125,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              544,
+              96,
+              2528,
+              384
+            ],
+            "changed_pixels": 95162
+          },
+          {
+            "box": [
+              0,
+              0,
+              544,
+              704
+            ],
+            "changed_pixels": 42425
+          },
+          {
+            "box": [
+              544,
+              416,
+              2272,
+              512
+            ],
+            "changed_pixels": 23521
+          },
+          {
+            "box": [
+              1888,
+              0,
+              2560,
+              96
+            ],
+            "changed_pixels": 12635
+          },
+          {
+            "box": [
+              1952,
+              1472,
+              2080,
+              1568
+            ],
+            "changed_pixels": 5585
+          },
+          {
+            "box": [
+              0,
+              1504,
+              416,
+              1600
+            ],
+            "changed_pixels": 4003
+          },
+          {
+            "box": [
+              2400,
+              416,
+              2528,
+              512
+            ],
+            "changed_pixels": 1250
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 653
+          },
+          {
+            "box": [
+              480,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 4
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M05",
+      "title": "Sign in",
+      "available": false,
+      "reference": "../M05-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": null,
+      "note": "UNAVAILABLE: PNG Apple / Google / email-code authentication is absent.  No new functionality added; no substitute target evidence.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "target unavailable",
+      "reference_source": {
+        "path": "../M05-Mac.png",
+        "sha256": "18ae18da7bf0daa6c43c20a3660dbbaead2b048b34306fc852aa17f9c27e217e",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "decision": "UNAVAILABLE: no substitute screenshot used or measured"
+    },
+    {
+      "id": "M06",
+      "title": "Invite",
+      "available": false,
+      "reference": "../M06-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": null,
+      "note": "UNAVAILABLE: no reachable invitation-code screen.  No new functionality added; no substitute target evidence.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "target unavailable",
+      "reference_source": {
+        "path": "../M06-Mac.png",
+        "sha256": "d339e25cfc369b8b829c1ea0d04e7c495d4c00394f6c27228c54552b70c5398a",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "decision": "UNAVAILABLE: no substitute screenshot used or measured"
+    },
+    {
+      "id": "M07",
+      "title": "Inbox",
+      "available": true,
+      "reference": "../M07-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M07-light.jpg",
+      "note": "Four synthetic Inbox entries match the approved sentences; empty inspector visible. Existing Agents/Tags sections depend on fixture data and remain reachable.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M07-Mac.png",
+        "sha256": "5bf9da6faa059b0ecf2e323bb4d365b6c6c55dfca19126a1049ab228d66c7e56",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M07-light.jpg",
+        "sha256": "55ecd77ef9bc43c81694eef60a95205650da6832f99ab4d8f6a97d4ade658900",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 136501,
+        "changed_percent": 3.3325439453125,
+        "mean_absolute_rgb_error": 3.7935205078125,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              512,
+              1152
+            ],
+            "changed_pixels": 57775
+          },
+          {
+            "box": [
+              0,
+              1184,
+              512,
+              1600
+            ],
+            "changed_pixels": 23503
+          },
+          {
+            "box": [
+              1280,
+              0,
+              1856,
+              192
+            ],
+            "changed_pixels": 11653
+          },
+          {
+            "box": [
+              544,
+              224,
+              1216,
+              352
+            ],
+            "changed_pixels": 10866
+          },
+          {
+            "box": [
+              2016,
+              736,
+              2432,
+              864
+            ],
+            "changed_pixels": 10126
+          },
+          {
+            "box": [
+              544,
+              384,
+              864,
+              512
+            ],
+            "changed_pixels": 6282
+          },
+          {
+            "box": [
+              544,
+              544,
+              896,
+              640
+            ],
+            "changed_pixels": 5653
+          },
+          {
+            "box": [
+              1536,
+              960,
+              1664,
+              1056
+            ],
+            "changed_pixels": 5541
+          },
+          {
+            "box": [
+              544,
+              96,
+              768,
+              192
+            ],
+            "changed_pixels": 2825
+          },
+          {
+            "box": [
+              384,
+              736,
+              480,
+              896
+            ],
+            "changed_pixels": 1245
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 359
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 356
+          },
+          {
+            "box": [
+              416,
+              640,
+              480,
+              672
+            ],
+            "changed_pixels": 132
+          },
+          {
+            "box": [
+              416,
+              576,
+              480,
+              608
+            ],
+            "changed_pixels": 113
+          },
+          {
+            "box": [
+              416,
+              512,
+              480,
+              544
+            ],
+            "changed_pixels": 70
+          },
+          {
+            "box": [
+              1856,
+              0,
+              1888,
+              32
+            ],
+            "changed_pixels": 2
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M08",
+      "title": "Next actions",
+      "available": true,
+      "reference": "../M08-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M08-light.jpg",
+      "note": "Buy bin bags selected with its inspector open, matching the board state. Flat list mode selected through the existing menu. Fixture counts differ.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M08-Mac.png",
+        "sha256": "74d01ec7abe19592ffe25d01b885fe2482e707ba33e8f77bb8104cf68d7a64d4",
+        "size": [
+          2812,
+          1998
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M08-light.jpg",
+        "sha256": "a55226ae4a564e7584062d87e7dd258154e29a3d0ca15c11de7022ed9bc31a6a",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 293177,
+        "changed_percent": 7.1576416015625,
+        "mean_absolute_rgb_error": 6.9764169921875,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              544,
+              96,
+              1856,
+              1056
+            ],
+            "changed_pixels": 115888
+          },
+          {
+            "box": [
+              0,
+              0,
+              544,
+              1152
+            ],
+            "changed_pixels": 57739
+          },
+          {
+            "box": [
+              1184,
+              0,
+              1888,
+              96
+            ],
+            "changed_pixels": 39134
+          },
+          {
+            "box": [
+              1920,
+              32,
+              2464,
+              224
+            ],
+            "changed_pixels": 16785
+          },
+          {
+            "box": [
+              1920,
+              1472,
+              2240,
+              1568
+            ],
+            "changed_pixels": 16523
+          },
+          {
+            "box": [
+              0,
+              1184,
+              352,
+              1600
+            ],
+            "changed_pixels": 15690
+          },
+          {
+            "box": [
+              1920,
+              256,
+              2464,
+              480
+            ],
+            "changed_pixels": 9911
+          },
+          {
+            "box": [
+              1536,
+              416,
+              1824,
+              672
+            ],
+            "changed_pixels": 9380
+          },
+          {
+            "box": [
+              576,
+              1088,
+              896,
+              1152
+            ],
+            "changed_pixels": 2461
+          },
+          {
+            "box": [
+              1600,
+              768,
+              1824,
+              832
+            ],
+            "changed_pixels": 2377
+          },
+          {
+            "box": [
+              1920,
+              512,
+              2080,
+              608
+            ],
+            "changed_pixels": 2069
+          },
+          {
+            "box": [
+              2304,
+              1504,
+              2528,
+              1536
+            ],
+            "changed_pixels": 1680
+          },
+          {
+            "box": [
+              384,
+              736,
+              480,
+              896
+            ],
+            "changed_pixels": 1248
+          },
+          {
+            "box": [
+              1664,
+              704,
+              1824,
+              736
+            ],
+            "changed_pixels": 730
+          },
+          {
+            "box": [
+              416,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 366
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 359
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 356
+          },
+          {
+            "box": [
+              416,
+              640,
+              480,
+              672
+            ],
+            "changed_pixels": 132
+          },
+          {
+            "box": [
+              416,
+              576,
+              480,
+              608
+            ],
+            "changed_pixels": 113
+          },
+          {
+            "box": [
+              2464,
+              416,
+              2496,
+              480
+            ],
+            "changed_pixels": 83
+          },
+          {
+            "box": [
+              2464,
+              512,
+              2496,
+              544
+            ],
+            "changed_pixels": 83
+          },
+          {
+            "box": [
+              416,
+              512,
+              480,
+              544
+            ],
+            "changed_pixels": 70
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M09",
+      "title": "Project",
+      "available": true,
+      "reference": "../M09-Mac.png",
+      "reference_theme": "dark",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M09-dark.jpg",
+      "note": "Garage project has the approved outcome, unfinished and completed steps, and selected Call Sam inspector. Actual project membership/counts differ.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M09-Mac.png",
+        "sha256": "968be86b1801b5516e62298abf69262f2524481029efaef760866dd7fafed020",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M09-dark.jpg",
+        "sha256": "01f4dbd8165866e045137ef0209c89a18e8c8930e73c299cfd08d395b8d7113c",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 385770,
+        "changed_percent": 9.418212890625,
+        "mean_absolute_rgb_error": 6.489999348958333,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              544,
+              96,
+              1856,
+              832
+            ],
+            "changed_pixels": 234405
+          },
+          {
+            "box": [
+              0,
+              0,
+              2560,
+              1600
+            ],
+            "changed_pixels": 109731
+          },
+          {
+            "box": [
+              1920,
+              256,
+              2496,
+              704
+            ],
+            "changed_pixels": 22113
+          },
+          {
+            "box": [
+              576,
+              864,
+              992,
+              992
+            ],
+            "changed_pixels": 6821
+          },
+          {
+            "box": [
+              1600,
+              864,
+              1824,
+              992
+            ],
+            "changed_pixels": 2616
+          },
+          {
+            "box": [
+              2304,
+              1504,
+              2560,
+              1600
+            ],
+            "changed_pixels": 2336
+          },
+          {
+            "box": [
+              1472,
+              608,
+              1824,
+              640
+            ],
+            "changed_pixels": 2270
+          },
+          {
+            "box": [
+              1632,
+              128,
+              1856,
+              192
+            ],
+            "changed_pixels": 2087
+          },
+          {
+            "box": [
+              1920,
+              1472,
+              2208,
+              1568
+            ],
+            "changed_pixels": 1848
+          },
+          {
+            "box": [
+              1600,
+              800,
+              1824,
+              832
+            ],
+            "changed_pixels": 1308
+          },
+          {
+            "box": [
+              2464,
+              576,
+              2496,
+              608
+            ],
+            "changed_pixels": 93
+          },
+          {
+            "box": [
+              2464,
+              416,
+              2496,
+              448
+            ],
+            "changed_pixels": 91
+          },
+          {
+            "box": [
+              2432,
+              192,
+              2464,
+              224
+            ],
+            "changed_pixels": 51
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M10",
+      "title": "New step",
+      "available": true,
+      "reference": "../M10-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        856,
+        332,
+        1896,
+        838
+      ],
+      "actual": "captures/M10-light.jpg",
+      "note": "Opened from Next actions. Existing Garage/calls classification, same-row Date/Note and compact destination chips. Raw editable tokens remain unhighlighted; adding a rich editor is excluded.",
+      "scope": "modal only; absolute placement and parent window unverified",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M10-Mac.png",
+        "sha256": "b2533375a59f70342cc320e8a15e00fa70d3fbf3fb4aebddc4aead88e17f9b62",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M10-light.jpg",
+        "sha256": "a2716d12db55b96f625b188fdcdf4fbad4a7965222974ba03196fe2068095210",
+        "size": [
+          1040,
+          506
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          1040,
+          506
+        ],
+        "actual_size": [
+          1040,
+          506
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 526240,
+        "changed_pixels": 53414,
+        "changed_percent": 10.150121617512923,
+        "mean_absolute_rgb_error": 8.80950136819702,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              864,
+              506
+            ],
+            "changed_pixels": 50086
+          },
+          {
+            "box": [
+              672,
+              416,
+              992,
+              448
+            ],
+            "changed_pixels": 1961
+          },
+          {
+            "box": [
+              960,
+              0,
+              1040,
+              96
+            ],
+            "changed_pixels": 685
+          },
+          {
+            "box": [
+              960,
+              416,
+              1040,
+              506
+            ],
+            "changed_pixels": 682
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M11",
+      "title": "Voice capture",
+      "available": false,
+      "reference": "../M11-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": null,
+      "note": "UNAVAILABLE: live inferred steps / Add N are excluded new workflow.  No new functionality added; no substitute target evidence.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "target unavailable",
+      "reference_source": {
+        "path": "../M11-Mac.png",
+        "sha256": "16950acdee392eedfd8bfdc557dcb825fcd6389b19f35218bb89aed51841c005",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "decision": "UNAVAILABLE: no substitute screenshot used or measured"
+    },
+    {
+      "id": "M12",
+      "title": "Quick Capture",
+      "available": true,
+      "reference": "../M12-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        856,
+        632,
+        1896,
+        966
+      ],
+      "actual": "captures/M12-light.jpg",
+      "note": "Opened the real Quick Capture. Matched sample text entered in the focused field. Header height and plain footer now match the approved 1040\u00d7334 bounds. Token parsing/save path unchanged; microphone remains unavailable. Native material reflects actual desktop.",
+      "scope": "modal only; absolute placement and parent window unverified",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M12-Mac.png",
+        "sha256": "477b5450e06b27f8d5a666c445beb69bc78a6493fe53bbcc82907cd2041665f1",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M12-light.jpg",
+        "sha256": "c3da29ea4bce46f12ea21c58404af40a7f372e64437dcc4d166eefddac5c2edf",
+        "size": [
+          1040,
+          334
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          1040,
+          334
+        ],
+        "actual_size": [
+          1040,
+          334
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 347360,
+        "changed_pixels": 225230,
+        "changed_percent": 64.84051128512206,
+        "mean_absolute_rgb_error": 14.247232458160601,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              1040,
+              334
+            ],
+            "changed_pixels": 225230
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M13",
+      "title": "Task inspector",
+      "available": true,
+      "reference": "../M13-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M13-light.jpg",
+      "note": "Selected Call Sam with the approved title and note, project/calls chips, real subtask and footer. Fixture has one unfinished subtask rather than two mixed-state rows.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M13-Mac.png",
+        "sha256": "3e1de11066ff10874e3b0c013883a61e59f4e70ed258b29a9292863c024bc735",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M13-light.jpg",
+        "sha256": "8f4b83b508ca61e12f1607f1aaa161d15a4a12007a7ad0a8026514f087eb1d1f",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 281453,
+        "changed_percent": 6.871411132812499,
+        "mean_absolute_rgb_error": 6.649112711588542,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              544,
+              96,
+              1856,
+              384
+            ],
+            "changed_pixels": 74666
+          },
+          {
+            "box": [
+              0,
+              0,
+              544,
+              1152
+            ],
+            "changed_pixels": 57737
+          },
+          {
+            "box": [
+              544,
+              416,
+              1120,
+              1056
+            ],
+            "changed_pixels": 39857
+          },
+          {
+            "box": [
+              1184,
+              0,
+              1888,
+              96
+            ],
+            "changed_pixels": 38541
+          },
+          {
+            "box": [
+              1920,
+              256,
+              2496,
+              704
+            ],
+            "changed_pixels": 21976
+          },
+          {
+            "box": [
+              0,
+              1184,
+              352,
+              1600
+            ],
+            "changed_pixels": 15689
+          },
+          {
+            "box": [
+              1920,
+              32,
+              2496,
+              224
+            ],
+            "changed_pixels": 12572
+          },
+          {
+            "box": [
+              1664,
+              416,
+              1824,
+              672
+            ],
+            "changed_pixels": 8518
+          },
+          {
+            "box": [
+              576,
+              1088,
+              896,
+              1152
+            ],
+            "changed_pixels": 2461
+          },
+          {
+            "box": [
+              1600,
+              768,
+              1824,
+              832
+            ],
+            "changed_pixels": 2400
+          },
+          {
+            "box": [
+              1920,
+              1472,
+              2240,
+              1568
+            ],
+            "changed_pixels": 1813
+          },
+          {
+            "box": [
+              2304,
+              1504,
+              2528,
+              1536
+            ],
+            "changed_pixels": 1681
+          },
+          {
+            "box": [
+              384,
+              736,
+              480,
+              896
+            ],
+            "changed_pixels": 1248
+          },
+          {
+            "box": [
+              1664,
+              704,
+              1824,
+              736
+            ],
+            "changed_pixels": 730
+          },
+          {
+            "box": [
+              416,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 366
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 359
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 356
+          },
+          {
+            "box": [
+              416,
+              640,
+              480,
+              672
+            ],
+            "changed_pixels": 132
+          },
+          {
+            "box": [
+              416,
+              576,
+              480,
+              608
+            ],
+            "changed_pixels": 113
+          },
+          {
+            "box": [
+              2464,
+              576,
+              2496,
+              608
+            ],
+            "changed_pixels": 85
+          },
+          {
+            "box": [
+              2464,
+              416,
+              2496,
+              480
+            ],
+            "changed_pixels": 83
+          },
+          {
+            "box": [
+              416,
+              512,
+              480,
+              544
+            ],
+            "changed_pixels": 70
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M14",
+      "title": "Due date",
+      "available": true,
+      "reference": "../M14-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M14-light.jpg",
+      "note": "Real calendar open, selected Friday16 and actual today Saturday17. Past days are secondary text; all dates remain selectable. Dismissed without changing due date.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M14-Mac.png",
+        "sha256": "4c363ed23c71f34f74d2ce9d81c49574123ccbd95048d61bf385a02d5f75980a",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M14-light.jpg",
+        "sha256": "6d3980c16255a1dba531f3b574613414b2c6696e643c4ca485fcdec65fbe5c07",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 355843,
+        "changed_percent": 8.6875732421875,
+        "mean_absolute_rgb_error": 9.278568766276042,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              1888,
+              32,
+              2528,
+              1088
+            ],
+            "changed_pixels": 112604
+          },
+          {
+            "box": [
+              544,
+              96,
+              1856,
+              384
+            ],
+            "changed_pixels": 70202
+          },
+          {
+            "box": [
+              0,
+              0,
+              544,
+              1152
+            ],
+            "changed_pixels": 57692
+          },
+          {
+            "box": [
+              544,
+              416,
+              1120,
+              1056
+            ],
+            "changed_pixels": 39856
+          },
+          {
+            "box": [
+              1216,
+              0,
+              1888,
+              96
+            ],
+            "changed_pixels": 39419
+          },
+          {
+            "box": [
+              0,
+              1184,
+              352,
+              1600
+            ],
+            "changed_pixels": 15695
+          },
+          {
+            "box": [
+              1664,
+              416,
+              1824,
+              672
+            ],
+            "changed_pixels": 8510
+          },
+          {
+            "box": [
+              576,
+              1088,
+              896,
+              1152
+            ],
+            "changed_pixels": 2461
+          },
+          {
+            "box": [
+              1600,
+              768,
+              1824,
+              832
+            ],
+            "changed_pixels": 2372
+          },
+          {
+            "box": [
+              1920,
+              1472,
+              2240,
+              1568
+            ],
+            "changed_pixels": 1820
+          },
+          {
+            "box": [
+              2304,
+              1504,
+              2528,
+              1536
+            ],
+            "changed_pixels": 1685
+          },
+          {
+            "box": [
+              384,
+              736,
+              480,
+              896
+            ],
+            "changed_pixels": 1245
+          },
+          {
+            "box": [
+              1664,
+              704,
+              1824,
+              736
+            ],
+            "changed_pixels": 730
+          },
+          {
+            "box": [
+              416,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 366
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 358
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 355
+          },
+          {
+            "box": [
+              416,
+              640,
+              480,
+              672
+            ],
+            "changed_pixels": 132
+          },
+          {
+            "box": [
+              416,
+              576,
+              480,
+              608
+            ],
+            "changed_pixels": 113
+          },
+          {
+            "box": [
+              2016,
+              544,
+              2048,
+              608
+            ],
+            "changed_pixels": 90
+          },
+          {
+            "box": [
+              416,
+              512,
+              480,
+              544
+            ],
+            "changed_pixels": 70
+          },
+          {
+            "box": [
+              1888,
+              1056,
+              1952,
+              1120
+            ],
+            "changed_pixels": 68
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M15",
+      "title": "Not now",
+      "available": true,
+      "reference": "../M15-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M15-light.jpg",
+      "note": "Opened Not now from the inspector footer, matching the approved anchor. Four existing options visible; dismissed without changing task state.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M15-Mac.png",
+        "sha256": "a9226f0c318629cee7a92c0a163141dc75868556389801b1082d4958a52f1bd6",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M15-light.jpg",
+        "sha256": "2d296f84e731be57ec8bbf2101a2d464e6ffaabf4c8fac4915ea6076fc04b55b",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 359905,
+        "changed_percent": 8.7867431640625,
+        "mean_absolute_rgb_error": 8.685649007161459,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              1920,
+              896,
+              2528,
+              1568
+            ],
+            "changed_pixels": 85884
+          },
+          {
+            "box": [
+              544,
+              96,
+              1856,
+              384
+            ],
+            "changed_pixels": 70211
+          },
+          {
+            "box": [
+              0,
+              0,
+              544,
+              1152
+            ],
+            "changed_pixels": 57716
+          },
+          {
+            "box": [
+              544,
+              416,
+              1120,
+              1056
+            ],
+            "changed_pixels": 39862
+          },
+          {
+            "box": [
+              1216,
+              0,
+              1888,
+              96
+            ],
+            "changed_pixels": 39044
+          },
+          {
+            "box": [
+              1920,
+              256,
+              2496,
+              704
+            ],
+            "changed_pixels": 21906
+          },
+          {
+            "box": [
+              0,
+              1184,
+              352,
+              1600
+            ],
+            "changed_pixels": 15692
+          },
+          {
+            "box": [
+              1920,
+              32,
+              2496,
+              224
+            ],
+            "changed_pixels": 12674
+          },
+          {
+            "box": [
+              1664,
+              416,
+              1824,
+              672
+            ],
+            "changed_pixels": 8510
+          },
+          {
+            "box": [
+              576,
+              1088,
+              896,
+              1152
+            ],
+            "changed_pixels": 2461
+          },
+          {
+            "box": [
+              1600,
+              768,
+              1824,
+              832
+            ],
+            "changed_pixels": 2398
+          },
+          {
+            "box": [
+              384,
+              736,
+              480,
+              896
+            ],
+            "changed_pixels": 1248
+          },
+          {
+            "box": [
+              1664,
+              704,
+              1824,
+              736
+            ],
+            "changed_pixels": 730
+          },
+          {
+            "box": [
+              416,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 366
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 358
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 355
+          },
+          {
+            "box": [
+              416,
+              640,
+              480,
+              672
+            ],
+            "changed_pixels": 132
+          },
+          {
+            "box": [
+              416,
+              576,
+              480,
+              608
+            ],
+            "changed_pixels": 113
+          },
+          {
+            "box": [
+              2464,
+              576,
+              2496,
+              608
+            ],
+            "changed_pixels": 85
+          },
+          {
+            "box": [
+              2464,
+              416,
+              2496,
+              480
+            ],
+            "changed_pixels": 83
+          },
+          {
+            "box": [
+              416,
+              512,
+              480,
+              544
+            ],
+            "changed_pixels": 70
+          },
+          {
+            "box": [
+              2464,
+              1056,
+              2496,
+              1088
+            ],
+            "changed_pixels": 7
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M16",
+      "title": "Sort Inbox",
+      "available": true,
+      "reference": "../M16-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M16-light.jpg",
+      "note": "Selected the approved original Inbox sentence. All four existing manual clarification choices and footer visible. No staged AI feature added.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M16-Mac.png",
+        "sha256": "1ada1e49c25a583f998a25147fa19f0e52c09aeee5cbbe7072de21342b9c5b33",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M16-light.jpg",
+        "sha256": "6b8831f385be68ddb427cebcb693e546a275086342a4aefc46810550b35f3048",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 199339,
+        "changed_percent": 4.8666748046875,
+        "mean_absolute_rgb_error": 4.695902750651042,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              512,
+              1152
+            ],
+            "changed_pixels": 57740
+          },
+          {
+            "box": [
+              1824,
+              224,
+              2528,
+              768
+            ],
+            "changed_pixels": 47524
+          },
+          {
+            "box": [
+              1216,
+              0,
+              1760,
+              192
+            ],
+            "changed_pixels": 27018
+          },
+          {
+            "box": [
+              0,
+              1184,
+              512,
+              1600
+            ],
+            "changed_pixels": 23492
+          },
+          {
+            "box": [
+              544,
+              192,
+              1760,
+              352
+            ],
+            "changed_pixels": 17398
+          },
+          {
+            "box": [
+              1824,
+              32,
+              2464,
+              192
+            ],
+            "changed_pixels": 7116
+          },
+          {
+            "box": [
+              544,
+              384,
+              864,
+              512
+            ],
+            "changed_pixels": 6280
+          },
+          {
+            "box": [
+              544,
+              544,
+              896,
+              640
+            ],
+            "changed_pixels": 5638
+          },
+          {
+            "box": [
+              544,
+              96,
+              768,
+              192
+            ],
+            "changed_pixels": 2826
+          },
+          {
+            "box": [
+              384,
+              736,
+              480,
+              896
+            ],
+            "changed_pixels": 1245
+          },
+          {
+            "box": [
+              1856,
+              1472,
+              2080,
+              1568
+            ],
+            "changed_pixels": 809
+          },
+          {
+            "box": [
+              2112,
+              1504,
+              2304,
+              1536
+            ],
+            "changed_pixels": 794
+          },
+          {
+            "box": [
+              2464,
+              1504,
+              2528,
+              1536
+            ],
+            "changed_pixels": 427
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 359
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 356
+          },
+          {
+            "box": [
+              416,
+              640,
+              480,
+              672
+            ],
+            "changed_pixels": 132
+          },
+          {
+            "box": [
+              416,
+              576,
+              480,
+              608
+            ],
+            "changed_pixels": 113
+          },
+          {
+            "box": [
+              416,
+              512,
+              480,
+              544
+            ],
+            "changed_pixels": 70
+          },
+          {
+            "box": [
+              1792,
+              0,
+              1824,
+              32
+            ],
+            "changed_pixels": 2
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M17",
+      "title": "AI first step",
+      "available": false,
+      "reference": "../M17-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": null,
+      "note": "UNAVAILABLE: staged AI formulation and its lifecycle are excluded product work.  No new functionality added; no substitute target evidence.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "target unavailable",
+      "reference_source": {
+        "path": "../M17-Mac.png",
+        "sha256": "6e0e37df16d156964bb5f990e022fffdd93a34dfff40b46efb0f9db8710aa513",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "decision": "UNAVAILABLE: no substitute screenshot used or measured"
+    },
+    {
+      "id": "M18",
+      "title": "Waiting for",
+      "available": true,
+      "reference": "../M18-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M18-light.jpg",
+      "note": "Selected Quote for the van, with Sam and the approved note. Dates/relative age reflect the actual test run. Existing disabled Follow up retained.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M18-Mac.png",
+        "sha256": "5d8899617f24ea90c7744a8c5aaab1406ab3ad8d3b0309b86aed56c4e53dadf9",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M18-light.jpg",
+        "sha256": "eaf48ddeb0bf658cc641f29d397cc1e09c2103ae5a8438570af2b88980beaff8",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 174215,
+        "changed_percent": 4.2532958984375,
+        "mean_absolute_rgb_error": 4.085818522135416,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              544,
+              1152
+            ],
+            "changed_pixels": 57630
+          },
+          {
+            "box": [
+              1184,
+              0,
+              1888,
+              96
+            ],
+            "changed_pixels": 38504
+          },
+          {
+            "box": [
+              544,
+              96,
+              1824,
+              448
+            ],
+            "changed_pixels": 28927
+          },
+          {
+            "box": [
+              1920,
+              288,
+              2496,
+              480
+            ],
+            "changed_pixels": 16735
+          },
+          {
+            "box": [
+              0,
+              1184,
+              352,
+              1600
+            ],
+            "changed_pixels": 15686
+          },
+          {
+            "box": [
+              1920,
+              32,
+              2272,
+              256
+            ],
+            "changed_pixels": 6691
+          },
+          {
+            "box": [
+              1472,
+              384,
+              1824,
+              416
+            ],
+            "changed_pixels": 2640
+          },
+          {
+            "box": [
+              1920,
+              1472,
+              2240,
+              1568
+            ],
+            "changed_pixels": 2463
+          },
+          {
+            "box": [
+              1536,
+              128,
+              1856,
+              192
+            ],
+            "changed_pixels": 2298
+          },
+          {
+            "box": [
+              384,
+              736,
+              480,
+              896
+            ],
+            "changed_pixels": 1245
+          },
+          {
+            "box": [
+              416,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 366
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 359
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 356
+          },
+          {
+            "box": [
+              416,
+              640,
+              480,
+              672
+            ],
+            "changed_pixels": 132
+          },
+          {
+            "box": [
+              416,
+              576,
+              480,
+              608
+            ],
+            "changed_pixels": 113
+          },
+          {
+            "box": [
+              416,
+              512,
+              480,
+              544
+            ],
+            "changed_pixels": 70
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M19",
+      "title": "Someday",
+      "available": true,
+      "reference": "../M19-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M19-light.jpg",
+      "note": "Selected Build a cold frame with the approved note. Creation age reflects the actual run; no new first-step flow added.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M19-Mac.png",
+        "sha256": "8417a5110a66ad0f926cb1e8a174064e7b6df2fdf277d5ac675f45ccb529e428",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M19-light.jpg",
+        "sha256": "e09f4d0b54a012c50e24d08f1c735fc20c2c3ff85571638eb4b7a9112eac2f25",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 177687,
+        "changed_percent": 4.3380615234375,
+        "mean_absolute_rgb_error": 4.569090169270833,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              544,
+              1152
+            ],
+            "changed_pixels": 57921
+          },
+          {
+            "box": [
+              1184,
+              0,
+              1888,
+              96
+            ],
+            "changed_pixels": 39141
+          },
+          {
+            "box": [
+              1920,
+              32,
+              2496,
+              480
+            ],
+            "changed_pixels": 26557
+          },
+          {
+            "box": [
+              544,
+              224,
+              1824,
+              512
+            ],
+            "changed_pixels": 23605
+          },
+          {
+            "box": [
+              0,
+              1184,
+              352,
+              1600
+            ],
+            "changed_pixels": 15688
+          },
+          {
+            "box": [
+              544,
+              96,
+              992,
+              192
+            ],
+            "changed_pixels": 7661
+          },
+          {
+            "box": [
+              1600,
+              128,
+              1856,
+              192
+            ],
+            "changed_pixels": 2120
+          },
+          {
+            "box": [
+              1920,
+              1472,
+              2080,
+              1568
+            ],
+            "changed_pixels": 1398
+          },
+          {
+            "box": [
+              384,
+              736,
+              480,
+              896
+            ],
+            "changed_pixels": 1245
+          },
+          {
+            "box": [
+              2112,
+              1504,
+              2272,
+              1536
+            ],
+            "changed_pixels": 955
+          },
+          {
+            "box": [
+              416,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 366
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 359
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 356
+          },
+          {
+            "box": [
+              416,
+              640,
+              480,
+              672
+            ],
+            "changed_pixels": 132
+          },
+          {
+            "box": [
+              416,
+              576,
+              480,
+              608
+            ],
+            "changed_pixels": 113
+          },
+          {
+            "box": [
+              416,
+              512,
+              480,
+              544
+            ],
+            "changed_pixels": 70
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M20",
+      "title": "Done",
+      "available": true,
+      "reference": "../M20-Mac.png",
+      "reference_theme": "dark",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M20-dark.jpg",
+      "note": "Selected completed Clear the shelves in Done. Read-only inspector and existing Reopen action visible. Completion dates reflect the actual run.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M20-Mac.png",
+        "sha256": "7f05526c62696ff9ff6d685273570fee4c18799804ce8e8952356319ca45b403",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M20-dark.jpg",
+        "sha256": "b0855956db7006bc43eed3b1aa565fef230c66748e76a4f998f87ae7c3a669b7",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 175662,
+        "changed_percent": 4.288623046875,
+        "mean_absolute_rgb_error": 3.686759928385417,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              2560,
+              1600
+            ],
+            "changed_pixels": 115009
+          },
+          {
+            "box": [
+              544,
+              96,
+              1856,
+              512
+            ],
+            "changed_pixels": 56699
+          },
+          {
+            "box": [
+              1600,
+              384,
+              1824,
+              512
+            ],
+            "changed_pixels": 2722
+          },
+          {
+            "box": [
+              2464,
+              1504,
+              2560,
+              1600
+            ],
+            "changed_pixels": 704
+          },
+          {
+            "box": [
+              1952,
+              1504,
+              2080,
+              1536
+            ],
+            "changed_pixels": 528
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M21",
+      "title": "Hand to an agent",
+      "available": true,
+      "reference": "../M21-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        856,
+        300,
+        1896,
+        1040
+      ],
+      "actual": "captures/M21-light.jpg",
+      "note": "Real hand-off sheet for Compare van hire prices with its note and Garage project. Two tested loopback agents. Existing security/retention/consent content is retained and can make the modal taller.",
+      "scope": "modal only; absolute placement and parent window unverified",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M21-Mac.png",
+        "sha256": "89af3ab81f11308bee69eadcbfc0f67938cb37596a13605595fa0dfef60dce16",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M21-light.jpg",
+        "sha256": "09e024bb92001d6ba707d6b68fe4750753237e6fb88413a2b0112477ac5ba36e",
+        "size": [
+          1040,
+          1098
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          1040,
+          740
+        ],
+        "actual_size": [
+          1040,
+          1098
+        ],
+        "width_delta": 0,
+        "height_delta": 358,
+        "overlap_pixels": 769600,
+        "changed_pixels": 250121,
+        "changed_percent": 32.50012993762994,
+        "mean_absolute_rgb_error": 20.549266718641718,
+        "unmatched_extent_pixels": 372320,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              1040,
+              768
+            ],
+            "changed_pixels": 250121
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M22",
+      "title": "All runs",
+      "available": true,
+      "reference": "../M22-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M22-light.jpg",
+      "note": "Real runs created through the hand-off UI. Only genuinely populated fixture groups shown; no invented running states or counts.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M22-Mac.png",
+        "sha256": "e1e95971e35f07f1ff6eca6888afa58ced35bfe89cc28ef25430ad0d505cdef8",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M22-light.jpg",
+        "sha256": "a3505457a8336df133b81248f5f033ac2cbe52b16dae80b57c69d6c413cd8524",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 249739,
+        "changed_percent": 6.0971435546875,
+        "mean_absolute_rgb_error": 4.7139925944010415,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              544,
+              96,
+              2528,
+              544
+            ],
+            "changed_pixels": 155957
+          },
+          {
+            "box": [
+              0,
+              0,
+              544,
+              1600
+            ],
+            "changed_pixels": 78453
+          },
+          {
+            "box": [
+              1888,
+              0,
+              2560,
+              96
+            ],
+            "changed_pixels": 11292
+          },
+          {
+            "box": [
+              416,
+              224,
+              480,
+              448
+            ],
+            "changed_pixels": 1123
+          },
+          {
+            "box": [
+              384,
+              928,
+              480,
+              1024
+            ],
+            "changed_pixels": 824
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 653
+          },
+          {
+            "box": [
+              2432,
+              128,
+              2528,
+              192
+            ],
+            "changed_pixels": 650
+          },
+          {
+            "box": [
+              384,
+              864,
+              480,
+              896
+            ],
+            "changed_pixels": 421
+          },
+          {
+            "box": [
+              416,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 366
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M23",
+      "title": "Needs you",
+      "available": true,
+      "reference": "../M23-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M23-light.jpg",
+      "note": "Real loopback agent returned input-required. Entered Only cash on pickup in the reply field; captured without submitting. Fixture question differs from board prose. Reply submission is not claimed.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M23-Mac.png",
+        "sha256": "aaac37247434fa692cb98475a8c60af38d8ae40b5711f09d6dc9e519629910b6",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M23-light.jpg",
+        "sha256": "b6f69f4cea77e11aef7645099984ec91ae564aba3d993c1c2443f9fa005b1214",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 333117,
+        "changed_percent": 8.132739257812501,
+        "mean_absolute_rgb_error": 6.34149853515625,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              1824,
+              32,
+              2528,
+              736
+            ],
+            "changed_pixels": 177211
+          },
+          {
+            "box": [
+              0,
+              0,
+              544,
+              1600
+            ],
+            "changed_pixels": 74695
+          },
+          {
+            "box": [
+              1184,
+              0,
+              1792,
+              96
+            ],
+            "changed_pixels": 29086
+          },
+          {
+            "box": [
+              544,
+              96,
+              960,
+              672
+            ],
+            "changed_pixels": 23929
+          },
+          {
+            "box": [
+              1216,
+              416,
+              1728,
+              608
+            ],
+            "changed_pixels": 10769
+          },
+          {
+            "box": [
+              1472,
+              256,
+              1728,
+              320
+            ],
+            "changed_pixels": 3002
+          },
+          {
+            "box": [
+              576,
+              704,
+              832,
+              832
+            ],
+            "changed_pixels": 2907
+          },
+          {
+            "box": [
+              1536,
+              128,
+              1760,
+              192
+            ],
+            "changed_pixels": 1981
+          },
+          {
+            "box": [
+              1504,
+              704,
+              1728,
+              832
+            ],
+            "changed_pixels": 1952
+          },
+          {
+            "box": [
+              1440,
+              352,
+              1728,
+              384
+            ],
+            "changed_pixels": 1762
+          },
+          {
+            "box": [
+              1824,
+              1472,
+              1984,
+              1568
+            ],
+            "changed_pixels": 1273
+          },
+          {
+            "box": [
+              384,
+              928,
+              480,
+              1024
+            ],
+            "changed_pixels": 825
+          },
+          {
+            "box": [
+              1568,
+              640,
+              1728,
+              672
+            ],
+            "changed_pixels": 806
+          },
+          {
+            "box": [
+              384,
+              640,
+              480,
+              800
+            ],
+            "changed_pixels": 600
+          },
+          {
+            "box": [
+              2016,
+              1504,
+              2144,
+              1536
+            ],
+            "changed_pixels": 554
+          },
+          {
+            "box": [
+              384,
+              864,
+              480,
+              896
+            ],
+            "changed_pixels": 422
+          },
+          {
+            "box": [
+              416,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 366
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 359
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 356
+          },
+          {
+            "box": [
+              416,
+              512,
+              480,
+              576
+            ],
+            "changed_pixels": 217
+          },
+          {
+            "box": [
+              1120,
+              0,
+              1152,
+              32
+            ],
+            "changed_pixels": 20
+          },
+          {
+            "box": [
+              1728,
+              256,
+              1760,
+              288
+            ],
+            "changed_pixels": 12
+          },
+          {
+            "box": [
+              1728,
+              320,
+              1760,
+              352
+            ],
+            "changed_pixels": 11
+          },
+          {
+            "box": [
+              1792,
+              0,
+              1824,
+              32
+            ],
+            "changed_pixels": 2
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M24",
+      "title": "Agent result",
+      "available": true,
+      "reference": "../M24-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": "captures/M24-light.jpg",
+      "note": "Real completed loopback-agent result, not a fabricated card. Fixture result text differs from the board. Agent completion does not complete its parent task.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M24-Mac.png",
+        "sha256": "356143feb34e4c0d43439e103d39fda4b86b44b325bcfc7e64b7729d348517a1",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M24-light.jpg",
+        "sha256": "c6e34b8dd94a0a97406fcd96d83d8005da08d0c96f1d5d8d0d0c32e42307e1f0",
+        "size": [
+          2560,
+          1600
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          2560,
+          1600
+        ],
+        "actual_size": [
+          2560,
+          1600
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 4096000,
+        "changed_pixels": 405306,
+        "changed_percent": 9.895166015625,
+        "mean_absolute_rgb_error": 7.128281412760416,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              1824,
+              32,
+              2528,
+              768
+            ],
+            "changed_pixels": 246274
+          },
+          {
+            "box": [
+              0,
+              0,
+              544,
+              1600
+            ],
+            "changed_pixels": 74715
+          },
+          {
+            "box": [
+              544,
+              96,
+              960,
+              672
+            ],
+            "changed_pixels": 28042
+          },
+          {
+            "box": [
+              1216,
+              256,
+              1760,
+              608
+            ],
+            "changed_pixels": 23541
+          },
+          {
+            "box": [
+              1120,
+              0,
+              1824,
+              128
+            ],
+            "changed_pixels": 16244
+          },
+          {
+            "box": [
+              576,
+              704,
+              832,
+              832
+            ],
+            "changed_pixels": 2907
+          },
+          {
+            "box": [
+              1824,
+              1472,
+              2112,
+              1568
+            ],
+            "changed_pixels": 2662
+          },
+          {
+            "box": [
+              1408,
+              640,
+              1728,
+              672
+            ],
+            "changed_pixels": 2577
+          },
+          {
+            "box": [
+              1536,
+              128,
+              1760,
+              192
+            ],
+            "changed_pixels": 2097
+          },
+          {
+            "box": [
+              1504,
+              704,
+              1728,
+              832
+            ],
+            "changed_pixels": 1952
+          },
+          {
+            "box": [
+              2144,
+              1504,
+              2368,
+              1536
+            ],
+            "changed_pixels": 1016
+          },
+          {
+            "box": [
+              384,
+              512,
+              480,
+              800
+            ],
+            "changed_pixels": 953
+          },
+          {
+            "box": [
+              384,
+              928,
+              480,
+              1024
+            ],
+            "changed_pixels": 824
+          },
+          {
+            "box": [
+              384,
+              864,
+              480,
+              896
+            ],
+            "changed_pixels": 421
+          },
+          {
+            "box": [
+              416,
+              1536,
+              512,
+              1600
+            ],
+            "changed_pixels": 366
+          },
+          {
+            "box": [
+              2496,
+              1536,
+              2560,
+              1600
+            ],
+            "changed_pixels": 359
+          },
+          {
+            "box": [
+              2496,
+              0,
+              2560,
+              64
+            ],
+            "changed_pixels": 356
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M25",
+      "title": "Account",
+      "available": true,
+      "reference": "../M25-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        556,
+        272,
+        2196,
+        1512
+      ],
+      "actual": "captures/M25-light.jpg",
+      "note": "Populated Account for the disposable local account. Actual name/steps/method state differ. Read-only Name and absent email/method/deletion controls are existing capability gaps; no new account functions.",
+      "scope": "modal only; absolute placement and parent window unverified",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M25-Mac.png",
+        "sha256": "c3e65a48f3f11c7e29a1176b18a3c568426d338297a79e2c0dfa7c9873f17ea4",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M25-light.jpg",
+        "sha256": "1854f792d429bb9e49a9d21fb74d9f9ee067970d50c9d3307706f016274cc8ae",
+        "size": [
+          1640,
+          1240
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          1640,
+          1240
+        ],
+        "actual_size": [
+          1640,
+          1240
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 2033600,
+        "changed_pixels": 115588,
+        "changed_percent": 5.683910306845004,
+        "mean_absolute_rgb_error": 5.829567925517964,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              1640,
+              384
+            ],
+            "changed_pixels": 57076
+          },
+          {
+            "box": [
+              256,
+              384,
+              896,
+              736
+            ],
+            "changed_pixels": 32979
+          },
+          {
+            "box": [
+              256,
+              768,
+              1088,
+              896
+            ],
+            "changed_pixels": 10628
+          },
+          {
+            "box": [
+              1312,
+              672,
+              1568,
+              896
+            ],
+            "changed_pixels": 8273
+          },
+          {
+            "box": [
+              384,
+              960,
+              672,
+              1024
+            ],
+            "changed_pixels": 1919
+          },
+          {
+            "box": [
+              1408,
+              576,
+              1536,
+              640
+            ],
+            "changed_pixels": 1061
+          },
+          {
+            "box": [
+              1408,
+              416,
+              1536,
+              480
+            ],
+            "changed_pixels": 1059
+          },
+          {
+            "box": [
+              1408,
+              960,
+              1536,
+              1024
+            ],
+            "changed_pixels": 1051
+          },
+          {
+            "box": [
+              1408,
+              512,
+              1536,
+              544
+            ],
+            "changed_pixels": 1042
+          },
+          {
+            "box": [
+              0,
+              1184,
+              64,
+              1240
+            ],
+            "changed_pixels": 250
+          },
+          {
+            "box": [
+              1600,
+              1184,
+              1640,
+              1240
+            ],
+            "changed_pixels": 250
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M26",
+      "title": "Sign-in methods",
+      "available": false,
+      "reference": "../M26-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": null,
+      "note": "UNAVAILABLE: no reachable sign-in-methods action.  No new functionality added; no substitute target evidence.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "target unavailable",
+      "reference_source": {
+        "path": "../M26-Mac.png",
+        "sha256": "8706383418c73f3c2bc8927fa895561ea17f4502e48f55a7cb606dfec33a5e87",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "decision": "UNAVAILABLE: no substitute screenshot used or measured"
+    },
+    {
+      "id": "M27",
+      "title": "Change email",
+      "available": false,
+      "reference": "../M27-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": null,
+      "note": "UNAVAILABLE: no reachable change-email action.  No new functionality added; no substitute target evidence.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "target unavailable",
+      "reference_source": {
+        "path": "../M27-Mac.png",
+        "sha256": "bb7c330c14b72cacdf74581ddd7a0cae76cf511a990b743c234d958b03c9c48a",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "decision": "UNAVAILABLE: no substitute screenshot used or measured"
+    },
+    {
+      "id": "M28",
+      "title": "Delete account",
+      "available": false,
+      "reference": "../M28-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        96,
+        192,
+        2656,
+        1792
+      ],
+      "actual": null,
+      "note": "UNAVAILABLE: no reachable delete-account action.  No new functionality added; no substitute target evidence.",
+      "scope": "whole window; fixed outer top-left anchor",
+      "other_theme": "target unavailable",
+      "reference_source": {
+        "path": "../M28-Mac.png",
+        "sha256": "fd664b1b9c553cc70310bf05fc4a53ba3373966035f908ecec25aca944afbebd",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "decision": "UNAVAILABLE: no substitute screenshot used or measured"
+    },
+    {
+      "id": "M29",
+      "title": "Agent settings",
+      "available": true,
+      "reference": "../M29-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        556,
+        272,
+        2196,
+        1512
+      ],
+      "actual": "captures/M29-light.jpg",
+      "note": "Two short-named tested agents and the selected details card. Capabilities/addresses/last-contact/guarantee reflect actual fixture cards; no invented values.",
+      "scope": "modal only; absolute placement and parent window unverified",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M29-Mac.png",
+        "sha256": "bd48819243825707a27d5c3464f818e1479b1567fc104dd9f5be4960963d7621",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M29-light.jpg",
+        "sha256": "455293a418b008fe4cc1e1a7a8a8205d3b0361872aa45c83ae4d9f69d93b0920",
+        "size": [
+          1640,
+          1240
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          1640,
+          1240
+        ],
+        "actual_size": [
+          1640,
+          1240
+        ],
+        "width_delta": 0,
+        "height_delta": 0,
+        "overlap_pixels": 2033600,
+        "changed_pixels": 166724,
+        "changed_percent": 8.198465774980331,
+        "mean_absolute_rgb_error": 6.788023537896669,
+        "unmatched_extent_pixels": 0,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              1640,
+              832
+            ],
+            "changed_pixels": 163829
+          },
+          {
+            "box": [
+              96,
+              384,
+              320,
+              448
+            ],
+            "changed_pixels": 1475
+          },
+          {
+            "box": [
+              416,
+              384,
+              512,
+              448
+            ],
+            "changed_pixels": 614
+          },
+          {
+            "box": [
+              0,
+              1184,
+              64,
+              1240
+            ],
+            "changed_pixels": 250
+          },
+          {
+            "box": [
+              1600,
+              1184,
+              1640,
+              1240
+            ],
+            "changed_pixels": 250
+          },
+          {
+            "box": [
+              64,
+              1120,
+              224,
+              1216
+            ],
+            "changed_pixels": 186
+          },
+          {
+            "box": [
+              544,
+              1152,
+              608,
+              1216
+            ],
+            "changed_pixels": 62
+          },
+          {
+            "box": [
+              1504,
+              1152,
+              1568,
+              1216
+            ],
+            "changed_pixels": 58
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    },
+    {
+      "id": "M30",
+      "title": "Add agent",
+      "available": true,
+      "reference": "../M30-Mac.png",
+      "reference_theme": "light",
+      "reference_roi": [
+        956,
+        456,
+        1796,
+        1202
+      ],
+      "actual": "captures/M30-light.jpg",
+      "note": "Existing Add agent sheet, filled with synthetic fields and masked test-only values. Existing Current password field retained; Cancel creates no connection.",
+      "scope": "modal only; absolute placement and parent window unverified",
+      "other_theme": "captured; no matching approved PNG baseline",
+      "reference_source": {
+        "path": "../M30-Mac.png",
+        "sha256": "8992b502052b97873336db80122dbb6804733bdf144aca28ac271976c4eafa4e",
+        "size": [
+          2812,
+          1956
+        ],
+        "icc_normalized": false
+      },
+      "actual_source": {
+        "path": "captures/M30-light.jpg",
+        "sha256": "049c1f7eb19f670c8da189dae508c1ff60c6a86ae5c6e773eab02ef01befce48",
+        "size": [
+          840,
+          906
+        ],
+        "icc_normalized": true
+      },
+      "metrics": {
+        "reference_size": [
+          840,
+          746
+        ],
+        "actual_size": [
+          840,
+          906
+        ],
+        "width_delta": 0,
+        "height_delta": 160,
+        "overlap_pixels": 626640,
+        "changed_pixels": 199309,
+        "changed_percent": 31.80598110557896,
+        "mean_absolute_rgb_error": 16.914727754372528,
+        "unmatched_extent_pixels": 134400,
+        "regions": [
+          {
+            "box": [
+              0,
+              0,
+              840,
+              768
+            ],
+            "changed_pixels": 199309
+          }
+        ],
+        "automatic_pass": false
+      },
+      "decision": "OPEN: unmasked differences require region-level disposition; no automatic pass"
+    }
+  ]
+}

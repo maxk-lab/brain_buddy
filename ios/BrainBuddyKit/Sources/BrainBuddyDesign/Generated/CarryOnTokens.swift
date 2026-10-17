@@ -203,6 +203,12 @@ public enum CarryOnLayout {
         public static let stepSize: Double = 22
         public static let stepLineHeight: Double = 1.25
     }
+    public enum MacWelcome {
+        public static let fieldHeight: Double = 44
+        public static let typedFieldHeight: Double = 64
+        public static let micSize: Double = 30
+        public static let hintWidth: Double = 69
+    }
     public enum LandingTip {
         public static let paddingY: Double = 16
         public static let paddingX: Double = 18
@@ -244,8 +250,40 @@ public enum CarryOnLayout {
         public static let gap: Double = 6
         public static let radius: Double = 12
     }
+    public enum MacSettings {
+        public static let width: Double = 820
+        public static let height: Double = 620
+        public static let minContentHeight: Double = 420
+        public static let tabWidth: Double = 70
+        public static let tabHeight: Double = 50
+    }
     public enum MacSidebarRow {
         public static let height: Double = 34
+    }
+    public enum MacAgents {
+        public static let listWidth: Double = 220
+        public static let paddingX: Double = 40
+        public static let paddingY: Double = 22
+        public static let gap: Double = 18
+        public static let detailPadding: Double = 18
+        public static let labelWidth: Double = 130
+        public static let rowHeight: Double = 26
+        public static let icon: Double = 16
+        public static let statusDot: Double = 7
+        public static let actionSize: Double = 26
+    }
+    public enum MacWindow {
+        public static let sidebarColumnWidth: Double = 240
+        public static let sidebarRowHeight: Double = 29
+        public static let sidebarOuterInset: Double = 8
+        public static let canvasMinimumWidth: Double = 560
+    }
+    public enum MacAgentAdd {
+        public static let width: Double = 420
+        public static let padding: Double = 22
+        public static let segmentHeight: Double = 30
+        public static let segmentInset: Double = 2
+        public static let fieldPaddingX: Double = 10
     }
 }
 
@@ -473,6 +511,10 @@ public enum CarryOnTokenTable {
         "layout.first-run.step-field-gap": CarryOnLayout.FirstRun.stepFieldGap,
         "layout.first-run.step-size": CarryOnLayout.FirstRun.stepSize,
         "layout.first-run.step-line-height": CarryOnLayout.FirstRun.stepLineHeight,
+        "layout.mac-welcome.field-height": CarryOnLayout.MacWelcome.fieldHeight,
+        "layout.mac-welcome.typed-field-height": CarryOnLayout.MacWelcome.typedFieldHeight,
+        "layout.mac-welcome.mic-size": CarryOnLayout.MacWelcome.micSize,
+        "layout.mac-welcome.hint-width": CarryOnLayout.MacWelcome.hintWidth,
         "layout.landing-tip.padding-y": CarryOnLayout.LandingTip.paddingY,
         "layout.landing-tip.padding-x": CarryOnLayout.LandingTip.paddingX,
         "layout.landing-tip.radius": CarryOnLayout.LandingTip.radius,
@@ -500,7 +542,31 @@ public enum CarryOnTokenTable {
         "layout.code-box.height": CarryOnLayout.CodeBox.height,
         "layout.code-box.gap": CarryOnLayout.CodeBox.gap,
         "layout.code-box.radius": CarryOnLayout.CodeBox.radius,
+        "layout.mac-settings.width": CarryOnLayout.MacSettings.width,
+        "layout.mac-settings.height": CarryOnLayout.MacSettings.height,
+        "layout.mac-settings.min-content-height": CarryOnLayout.MacSettings.minContentHeight,
+        "layout.mac-settings.tab-width": CarryOnLayout.MacSettings.tabWidth,
+        "layout.mac-settings.tab-height": CarryOnLayout.MacSettings.tabHeight,
         "layout.mac-sidebar-row.height": CarryOnLayout.MacSidebarRow.height,
+        "layout.mac-agents.list-width": CarryOnLayout.MacAgents.listWidth,
+        "layout.mac-agents.padding-x": CarryOnLayout.MacAgents.paddingX,
+        "layout.mac-agents.padding-y": CarryOnLayout.MacAgents.paddingY,
+        "layout.mac-agents.gap": CarryOnLayout.MacAgents.gap,
+        "layout.mac-agents.detail-padding": CarryOnLayout.MacAgents.detailPadding,
+        "layout.mac-agents.label-width": CarryOnLayout.MacAgents.labelWidth,
+        "layout.mac-agents.row-height": CarryOnLayout.MacAgents.rowHeight,
+        "layout.mac-agents.icon": CarryOnLayout.MacAgents.icon,
+        "layout.mac-agents.status-dot": CarryOnLayout.MacAgents.statusDot,
+        "layout.mac-agents.action-size": CarryOnLayout.MacAgents.actionSize,
+        "layout.mac-window.sidebar-column-width": CarryOnLayout.MacWindow.sidebarColumnWidth,
+        "layout.mac-window.sidebar-row-height": CarryOnLayout.MacWindow.sidebarRowHeight,
+        "layout.mac-window.sidebar-outer-inset": CarryOnLayout.MacWindow.sidebarOuterInset,
+        "layout.mac-window.canvas-minimum-width": CarryOnLayout.MacWindow.canvasMinimumWidth,
+        "layout.mac-agent-add.width": CarryOnLayout.MacAgentAdd.width,
+        "layout.mac-agent-add.padding": CarryOnLayout.MacAgentAdd.padding,
+        "layout.mac-agent-add.segment-height": CarryOnLayout.MacAgentAdd.segmentHeight,
+        "layout.mac-agent-add.segment-inset": CarryOnLayout.MacAgentAdd.segmentInset,
+        "layout.mac-agent-add.field-padding-x": CarryOnLayout.MacAgentAdd.fieldPaddingX,
     ]
     public static let strings: [String: String] = [
         "font.voice.family": CarryOnFontFace.voice.family,

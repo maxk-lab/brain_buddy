@@ -1,3 +1,4 @@
+import AppKit
 import BrainBuddyCore
 import BrainBuddyDesign
 import SwiftUI
@@ -27,8 +28,8 @@ enum MacCaptureFont {
 
 // MARK: - Surface
 
-/// What a floating capture card is drawn on: the system glass in the app, or a `surface-card`
-/// stand-in where glass cannot render (an `ImageRenderer` snapshot).
+/// The capture card host: native card chrome, or its snapshot stand-in. Both use
+/// the board's warm base colour; Quick Capture separately blends the desktop behind its panel.
 enum MacCaptureSurfaceKind: Sendable {
     case glass, standIn
 }
@@ -39,10 +40,14 @@ extension View {
     func macCaptureSurface(cornerRadius: CGFloat, kind: MacCaptureSurfaceKind) -> some View {
         switch kind {
         case .glass:
-            glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            background(MacBoardSurface.floating, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(.white.opacity(0.45), lineWidth: 1)
+                }
         case .standIn:
             background(
-                CarryOnColorStyle.coSurfaceCard, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                MacBoardSurface.floating, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
     }
 
@@ -102,7 +107,8 @@ struct MacCaptureNote: View {
 }
 
 /// The board's outlined chip ("+ Date" on board 10): no fill, a 1.5 ring in
-/// `control-quiet-pressed`, secondary text. Here it says what a capture has none of.
+/// the board's light outline colour (a visible neutral in dark mode), secondary text.
+/// Here it says what a capture has none of.
 struct MacOutlineChip: View {
     let text: String
 
@@ -113,7 +119,7 @@ struct MacOutlineChip: View {
             .lineLimit(1)
             .padding(.horizontal, 12)
             .frame(height: 26)
-            .overlay(Capsule().strokeBorder(CarryOnColorStyle.coControlQuietPressed, lineWidth: 1.5))
+            .overlay(Capsule().strokeBorder(MacBoardSurface.outline, lineWidth: 1.5))
     }
 }
 
@@ -270,6 +276,7 @@ struct MacNewTaskClassification: View {
     let project: ClassificationPreview?
     let tags: [ClassificationPreview]
     var topPadding: CGFloat = 14
+    var showsDetailPlaceholders = false
 
     /// The same in words, for VoiceOver: "Garage · #calls (new tag)".
     static func summary(project: ClassificationPreview?, tags: [ClassificationPreview]) -> String {
@@ -292,11 +299,15 @@ struct MacNewTaskClassification: View {
                     CarryOnChip(tag.isNew ? "\(tag.name) (new tag)" : tag.name)
                 }
             }
+            if showsDetailPlaceholders {
+                MacOutlineChip(text: "+ Date")
+                MacOutlineChip(text: "+ Note")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, topPadding)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Self.summary(project: project, tags: tags))
+        .accessibilityLabel(Self.summary(project: project, tags: tags) + (showsDetailPlaceholders ? ". Set a date or add a note in task details after adding." : ""))
     }
 }
 
@@ -547,9 +558,9 @@ struct MacVoiceCaptureCard<Transcript: View, More: View>: View {
 // MARK: - Quick capture (board 12)
 
 /// The quick-capture panel's card: the mark and "What feels heaviest?" with the shortcut on the
-/// right; the field on `field-bg`; then "Goes to Inbox" with the recognised tokens, and "Return to
-/// save · Esc to close", which are the Save and Cancel buttons (Return and Esc). 520 wide, padding
-/// 20, radius 26, on glass.
+/// right; the `field-bg` plate and its voice button; then "Goes to Inbox" with the recognised
+/// tokens, and "Return to save · Esc to close", which are the Save and Cancel buttons (Return and
+/// Esc). 520 wide, padding 20, radius 26, on glass.
 struct MacQuickCaptureCard<Field: View>: View {
     /// "⌃⌥⇧B", or nil when the global shortcut could not be registered.
     let shortcut: String?
@@ -557,14 +568,18 @@ struct MacQuickCaptureCard<Field: View>: View {
     let error: String?
     let saveDisabled: Bool
     let busy: Bool
+    let voicePhase: MacVoicePhase
+    let requestingPermission: Bool
     let surface: MacCaptureSurfaceKind
     let onSave: () -> Void
     let onClose: () -> Void
+    let onMic: () -> Void
     let field: Field
 
     init(
         shortcut: String?, tokens: [String], error: String?, saveDisabled: Bool, busy: Bool = false,
-        surface: MacCaptureSurfaceKind = .glass, onSave: @escaping () -> Void, onClose: @escaping () -> Void,
+        voicePhase: MacVoicePhase, requestingPermission: Bool, surface: MacCaptureSurfaceKind = .glass,
+        onSave: @escaping () -> Void, onClose: @escaping () -> Void, onMic: @escaping () -> Void,
         @ViewBuilder field: () -> Field
     ) {
         self.shortcut = shortcut
@@ -572,10 +587,22 @@ struct MacQuickCaptureCard<Field: View>: View {
         self.error = error
         self.saveDisabled = saveDisabled
         self.busy = busy
+        self.voicePhase = voicePhase
+        self.requestingPermission = requestingPermission
         self.surface = surface
         self.onSave = onSave
         self.onClose = onClose
+        self.onMic = onMic
         self.field = field()
+    }
+
+    private var voiceButtonLabel: String {
+        if requestingPermission { return "Requesting microphone access" }
+        return switch voicePhase {
+        case .idle: "Record voice capture"
+        case .recording: "Stop recording and transcribe"
+        case .preparingModel, .transcribing: voicePhase.status
+        }
     }
 
     var body: some View {
@@ -594,7 +621,31 @@ struct MacQuickCaptureCard<Field: View>: View {
                         .foregroundStyle(CarryOnColorStyle.coTextSecondary)
                 }
             }
-            field
+            .frame(height: 26)
+            HStack(spacing: 10) {
+                field
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(busy || voicePhase.isWorking || requestingPermission)
+                Button(action: onMic) {
+                    Group {
+                        if voicePhase.isWorking || requestingPermission {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(CarryOnColorStyle.coVoiceFg)
+                                .frame(width: 34, height: 34)
+                                .background(CarryOnColorStyle.coVoiceBg, in: Circle())
+                                .accessibilityLabel(voiceButtonLabel)
+                        } else {
+                            MacVoiceButtonFace(live: voicePhase == .recording, size: 34)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(true)
+                .accessibilityLabel("Voice capture unavailable in Quick Capture")
+                .accessibilityHint("Use Voice to task draft from the main window.")
+                .help("Voice capture is available from the main window.")
+            }
                 .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
                 .padding(.vertical, 12)
                 .padding(.horizontal, 14)
@@ -605,9 +656,6 @@ struct MacQuickCaptureCard<Field: View>: View {
             }
             HStack(spacing: 6) {
                 Text("Goes to Inbox")
-                ForEach(Array(tokens.enumerated()), id: \.offset) { _, token in
-                    MacCaptureToken(text: token)
-                }
                 Spacer(minLength: 8)
                 Button(action: onSave) { Text("Return to save") }
                     .buttonStyle(.plain)
@@ -628,7 +676,19 @@ struct MacQuickCaptureCard<Field: View>: View {
         }
         .padding(20)
         .frame(width: 520, alignment: .topLeading)
-        .macCaptureSurface(cornerRadius: 26, kind: surface)
+        .background {
+            if surface == .glass {
+                MacQuickCaptureBackdrop()
+                    .overlay(CarryOnColorStyle.coBgGround.opacity(0.28))
+                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .strokeBorder(.white.opacity(0.65), lineWidth: 1)
+                    }
+            } else {
+                RoundedRectangle(cornerRadius: 26, style: .continuous).fill(CarryOnColorStyle.coSurfaceCard)
+            }
+        }
     }
 }
 
@@ -645,4 +705,17 @@ enum MacCaptureTokens {
         }
         return shown
     }
+}
+
+/// Behind-window blending keeps the floating panel translucent over the user's desktop.
+private struct MacQuickCaptureBackdrop: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.blendingMode = .behindWindow
+        view.material = .hudWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {}
 }

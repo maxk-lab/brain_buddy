@@ -30,6 +30,10 @@ enum TaskInspectorCommand {
     case close
 }
 
+enum TaskInspectorRequest: Equatable {
+    case pickDay, changeStep
+}
+
 /// A project's dot on the inspector: its own colour, else the palette's neutral dot.
 func inspectorProjectDot(_ hex: String?) -> BrainBuddyDesign.RGBColor {
     guard let hex, hex.hasPrefix("#"), hex.count == 7, let value = UInt32(hex.dropFirst(), radix: 16) else {
@@ -77,16 +81,20 @@ struct TaskInspector: View {
     let onCommand: (TaskInspectorCommand) -> Void
     let onFocusChange: (TaskInspectorField?) -> Void
     let onExtrasDirtyChange: (Bool) -> Void
-    /// The step's agent run (030 G-05), under its fields; nil when it has none.
+    /// The complete dedicated agent inspector (030 G-05); nil for an ordinary task.
     var runSection: AnyView?
     /// Hand off… (030 G-04): hidden with the relay off, disabled with its reason for an unsynced step.
     var handOff = HandOffControl.hidden
     var onHandOff: () -> Void = {}
+    var requestedAction: Binding<TaskInspectorRequest?> = .constant(nil)
 
     @FocusState private var fieldFocus: TaskInspectorField?
+    @FocusState private var dueDayFocused: Bool
     @State private var showingNotNow = false
-    @State private var showsDateAndTags = false
-    @State private var scrollTarget: String?
+    @State private var showingDueDay = false
+    @State private var restoreDueDayAfterDismissal = false
+    @State private var showingExtras = false
+    @State private var suggesting: SuggestionRequest?
     /// Inbox "A step I can take": the title is being rewritten as the first step.
     @State private var writingFirstStep = false
     @State private var showingProjectCreator = false
@@ -96,22 +104,25 @@ struct TaskInspector: View {
 
     private var variant: TaskInspectorVariant { TaskInspectorVariant(state: task.state) }
 
+    @ViewBuilder
     var body: some View {
-        MacInspectorPanel(width: Self.width(for: task.state)) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        content
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .scrollIndicators(.automatic)
-                .onChange(of: scrollTarget) { _, target in
-                    guard let target else { return }
-                    withAnimation { proxy.scrollTo(target, anchor: .top) }
-                    scrollTarget = nil
-                }
+        Group {
+            if let runSection {
+                runSection
+            } else {
+                ordinaryInspector
             }
+        }
+        .background { shortcuts }
+    }
+
+    private var ordinaryInspector: some View {
+        MacInspectorPanel(width: Self.width(for: task.state)) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) { content }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollIndicators(.automatic)
         } actionBar: {
             actionBar
                 // presentation-region: task inspector popover and sheets
@@ -127,10 +138,14 @@ struct TaskInspector: View {
                             onCommand(.move(.someday))
                         },
                         onChangeStep: changeTheStep)
+                        .background {
+                            Button("Dismiss Not now") { showingNotNow = false }
+                                .keyboardShortcut(.cancelAction)
+                                .frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
+                        }
                 }
                 // presentation-region-end
         }
-        .background { shortcuts }
         // presentation-region: task inspector popover and sheets
         .sheet(isPresented: $showingProjectCreator, onDismiss: {
             newProjectEditorID = UUID().uuidString
@@ -138,8 +153,18 @@ struct TaskInspector: View {
         }) {
             projectCreator.interactiveDismissDisabled(isCreatingProject)
         }
+        .sheet(item: $suggesting) { request in
+            ReviewSuggestionSheetLoader(model: model, task: task, kind: request.kind) { suggesting = nil }
+        }
         // presentation-region-end
-        .onAppear { showsDateAndTags = dueDate != nil || !tagIDs.isEmpty }
+        .onChange(of: requestedAction.wrappedValue, initial: true) { _, request in
+            guard let request else { return }
+            switch request {
+            case .pickDay: pickADay()
+            case .changeStep: changeTheStep()
+            }
+            requestedAction.wrappedValue = nil
+        }
         .onChange(of: fieldFocus) { _, field in onFocusChange(field) }
     }
 
@@ -155,6 +180,8 @@ struct TaskInspector: View {
         case .finished(let cancelled): finishedContent(cancelled: cancelled)
         }
     }
+
+    private var showsExtras: Bool { showingExtras || !task.subtasks.isEmpty || !task.comments.isEmpty }
 
     private var projectName: String? { projectID.map { model.projectLabel($0) } }
     private var projectDot: BrainBuddyDesign.RGBColor? {
@@ -202,9 +229,17 @@ struct TaskInspector: View {
                 onCommand(.move(.someday))
             }
         }
-        notes(label: "Note")
-        TaskDetailExtras(task: task, model: model, editorDirty: editorDirty, onDirtyChange: onExtrasDirtyChange)
-        properties
+        if writingFirstStep { notes(label: "Note") }
+        // Keep extras mounted so Back preserves unfinished input and retry IDs. Their TextFields
+        // disable correctly; the native Note TextEditor above must be omitted when not authoring.
+        TaskDetailExtras(task: task, model: model, onDirtyChange: onExtrasDirtyChange)
+            .frame(height: writingFirstStep ? nil : 0, alignment: .top)
+            .opacity(writingFirstStep ? 1 : 0)
+            .clipped()
+            .disabled(!writingFirstStep)
+            .allowsHitTesting(writingFirstStep)
+            .accessibilityHidden(!writingFirstStep)
+        if writingFirstStep { chips }
     }
 
     /// Board 13.
@@ -215,10 +250,7 @@ struct TaskInspector: View {
         problemLine
         chips
         notes(label: "Why")
-        TaskDetailExtras(task: task, model: model, editorDirty: editorDirty, onDirtyChange: onExtrasDirtyChange)
-        properties
-        if let runSection { runSection } else { handOffRow }
-        cancelTask
+        TaskDetailExtras(task: task, model: model, onDirtyChange: onExtrasDirtyChange)
     }
 
     /// Board 18: who it is with, first.
@@ -226,17 +258,29 @@ struct TaskInspector: View {
     private var waitingContent: some View {
         eyebrow(TaskList.waiting.title)
         titleField()
-        let person = (task.waitingFor ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        if !person.isEmpty {
-            MacInspectorPerson(name: person, since: waitingSince)
+        HStack(spacing: 10) {
+            MacInspectorGlyphView(glyph: .person, size: 22)
+                .foregroundStyle(CarryOnColorStyle.coTextPrimary)
+            VStack(alignment: .leading, spacing: 0) {
+                TextField("Person, event, or condition", text: $waitingFor)
+                    .textFieldStyle(.plain)
+                    .font(MacRowFont.action(size: 15, weight: 600, relativeTo: .body))
+                    .foregroundStyle(CarryOnColorStyle.coTextPrimary)
+                    .focused($fieldFocus, equals: .waitingFor)
+                    .accessibilityLabel("Waiting for person, event, or condition")
+                MacInspectorMetaText(text: waitingSince, topPadding: 0)
+            }
         }
+        .padding(.top, 14)
         problemLine
         notes(label: "Note")
         chips
-        TaskDetailExtras(task: task, model: model, editorDirty: editorDirty, onDirtyChange: onExtrasDirtyChange)
-        properties
-        if let runSection { runSection } else { handOffRow }
-        cancelTask
+        TaskDetailExtras(task: task, model: model, onDirtyChange: onExtrasDirtyChange)
+            .frame(height: showsExtras ? nil : 0, alignment: .top)
+            .clipped()
+            .disabled(!showsExtras)
+            .allowsHitTesting(showsExtras)
+            .accessibilityHidden(!showsExtras)
     }
 
     /// Board 19: the serif title, how long it has been here, and how to start it.
@@ -248,9 +292,13 @@ struct TaskInspector: View {
         MacInspectorMetaText(text: "Here since \(Self.monthText(task.createdAt))")
         notes(label: "Note")
         MacInspectorBodyText(
-            text: "Ready to start? Write the first step and it moves to Next actions.", quiet: true, topPadding: 18)
-        TaskDetailExtras(task: task, model: model, editorDirty: editorDirty, onDirtyChange: onExtrasDirtyChange)
-        properties
+            text: "Ready to start? Move it to Next actions.", quiet: true, topPadding: 18)
+        TaskDetailExtras(task: task, model: model, onDirtyChange: onExtrasDirtyChange)
+            .frame(height: showsExtras ? nil : 0, alignment: .top)
+            .clipped()
+            .disabled(!showsExtras)
+            .allowsHitTesting(showsExtras)
+            .accessibilityHidden(!showsExtras)
     }
 
     /// Board 20: read-only, with "Reopen…".
@@ -263,15 +311,10 @@ struct TaskInspector: View {
             projectColor: task.projectID.map { inspectorProjectDot(model.project($0)?.color) },
             listName: date.map { "\(word) on \($0.formatted(date: .abbreviated, time: .omitted))" } ?? word)
         MacInspectorTitle(text: task.title, struck: true)
-        MacInspectorMetaText(text: task.lastOpenList.map { "Previously in \($0.title)" } ?? "Previous list unknown")
         if let note = task.details, !note.isEmpty {
             MacInspectorSectionLabel("Note")
             MacInspectorBodyText(text: note)
         }
-        MacInspectorChips(
-            projectName: task.projectID.map { model.projectLabel($0) },
-            projectColor: task.projectID.map { inspectorProjectDot(model.project($0)?.color) },
-            dueText: task.dueDate.map(Self.dueText), tags: tagNames(task.tagIDs))
         if !task.subtasks.isEmpty {
             MacInspectorSectionLabel("Steps inside")
             VStack(alignment: .leading, spacing: 8) {
@@ -317,152 +360,135 @@ struct TaskInspector: View {
         }
     }
 
+    private var projectChoices: some View {
+        Group {
+            Button("No project") { projectID = nil }
+            ForEach(model.projects) { project in
+                Button(project.name) { projectID = project.id }
+            }
+            Button("New project…") {
+                newProjectEditorID = UUID().uuidString
+                showingProjectCreator = true
+            }
+        }
+    }
+
     private var chips: some View {
-        MacInspectorChips(
-            projectName: projectName, projectColor: projectDot, dueText: dueDate.map(Self.dueText),
-            dueTone: dueDate.map(Self.dueTone) ?? .plain, tags: tagNames(tagIDs))
+        MacInspectorFlow(spacing: 6) {
+            if variant != .waiting || projectID != nil {
+                Menu { projectChoices } label: {
+                    CarryOnChip(projectName ?? "+ Project", dot: projectDot)
+                }
+                .accessibilityLabel("Project")
+            }
+            // Retain the trigger in the hierarchy so More can open the same date popover.
+            dueDayChip
+                .frame(width: variant == .waiting && dueDate == nil ? 0 : nil)
+                .clipped()
+                .allowsHitTesting(variant != .waiting || dueDate != nil)
+                .accessibilityHidden(variant == .waiting && dueDate == nil)
+            ForEach(tagIDs, id: \.self) { id in
+                if let tag = model.tag(id) {
+                    Menu {
+                        Button("Remove tag") { tagIDs.removeAll { $0 == id } }
+                    } label: { CarryOnChip(tag.name) }
+                }
+            }
+            Menu {
+                if variant == .waiting {
+                    if projectID == nil { Menu("Project") { projectChoices } }
+                    if dueDate == nil { Button("Due date…") { showingDueDay = true } }
+                }
+                Picker("List", selection: Binding(
+                    get: { task.state.openList ?? .next }, set: { onCommand(.changeList($0)) })
+                ) {
+                    ForEach(TaskList.allCases) { Text($0.title).tag($0) }
+                }
+                Menu("Add tag") {
+                    ForEach(model.tags.filter { !tagIDs.contains($0.id) }) { tag in
+                        Button(tag.name) { tagIDs.append(tag.id) }
+                    }
+                }
+                Button("Steps and comments…") { showingExtras = true }
+                if task.state == .waiting {
+                    Button("Move to Next") { onCommand(.move(.next)) }
+                }
+                suggestionEntry
+                if variant == .next || variant == .waiting { handOffMenu }
+                Button("Cancel task", role: .destructive) { onCommand(.cancel) }
+            } label: { CarryOnChip("…") }
+            .accessibilityLabel("More task properties")
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 14)
+    }
+
+    private var dueDayChip: some View {
+        Button { showingDueDay = true } label: {
+            CarryOnChip(dueDate.map(Self.dueText) ?? "+ Date", tone: dueDate.map(Self.dueTone) ?? .plain)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Due date")
+        .focusable(variant != .waiting || dueDate != nil)
+        .focused($dueDayFocused)
+        // presentation-region: task inspector popover and sheets
+        .popover(isPresented: $showingDueDay, arrowEdge: .bottom) {
+            InspectorDueDayPicker(dueDate: dueDate, onCancel: closeDueDayPicker) { selected in
+                dueDate = selected
+                closeDueDayPicker()
+            }
+            .onDisappear(perform: restoreDueDayTrigger)
+        }
+        // presentation-region-end
     }
 
     private func notes(label: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             MacInspectorSectionLabel(label)
-            TextEditor(text: $details)
+            TextField("Add a note…", text: $details, axis: .vertical)
+                .textFieldStyle(.plain)
                 .font(MacRowFont.title)
+                .lineSpacing(5)
                 .foregroundStyle(CarryOnColorStyle.coTextPrimary)
-                .scrollContentBackground(.hidden)
-                .frame(height: 96)
-                .padding(5)
-                .background(CarryOnColorStyle.coFieldBg, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .focused($fieldFocus, equals: .details)
                 .accessibilityLabel(label == "Why" ? "Why, notes and context" : "Note")
         }
     }
 
-    /// The fields the boards leave out but the app has: the list, the project, who a Waiting task
-    /// waits for, the due day and the tags.
+    /// The bounded entry of the Weekly Review suggestions (D-04): only on a Next action while the
+    /// review is exposed. A choice here opens the sheet; nothing is requested or changed by it.
     @ViewBuilder
-    private var properties: some View {
-        MacInspectorSectionLabel("List")
-        Picker(
-            "List",
-            selection: Binding(get: { task.state.openList ?? .next }, set: { onCommand(.changeList($0)) })
-        ) {
-            ForEach(TaskList.allCases) { list in
-                Text(list.title).tag(list)
-            }
-        }
-        .pickerStyle(.menu)
-        .labelsHidden()
-        .fixedSize()
-        if task.state == .waiting {
-            MacInspectorSectionLabel("Waiting for")
-            TextField("Person, event, or condition", text: $waitingFor)
-                .inspectorField()
-                .focused($fieldFocus, equals: .waitingFor)
-                .accessibilityLabel("Waiting for person, event, or condition")
-        }
-        MacInspectorSectionLabel("Project")
-        HStack(spacing: 8) {
-            Picker("Project", selection: $projectID) {
-                Text("No project").tag(ProjectID?.none)
-                if let current = projectID, !model.projects.contains(where: { $0.id == current }) {
-                    Text(model.projectLabel(current)).tag(ProjectID?.some(current))
-                }
-                ForEach(model.projects) { project in
-                    Text(project.name).tag(ProjectID?.some(project.id))
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .fixedSize()
-            Button("New project…") {
-                newProjectEditorID = UUID().uuidString
-                showingProjectCreator = true
-            }
-            .buttonStyle(.carryOnQuiet)
-        }
-        DisclosureGroup(isExpanded: $showsDateAndTags) {
-            dateAndTags.padding(.top, 8)
-        } label: {
-            HStack {
-                Text("Date and tags")
-                    .font(MacRowFont.sectionHeader)
-                    .foregroundStyle(CarryOnColorStyle.coTextSecondary)
-                Spacer()
-                Text(propertySummary)
-                    .font(MacRowFont.meta)
-                    .foregroundStyle(CarryOnColorStyle.coTextSecondary)
-            }
-        }
-        .padding(.top, 22)
-        .id("date-and-tags")
-    }
-
-    private var dateAndTags: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Toggle(
-                "Due date",
-                isOn: Binding(get: { dueDate != nil }, set: { dueDate = $0 ? CalendarDay(date: Date()) : nil })
-            )
-            .font(MacRowFont.title)
-            .foregroundStyle(CarryOnColorStyle.coTextPrimary)
-            if let due = dueDate {
-                DatePicker(
-                    "Choose date",
-                    selection: Binding(get: { due.startDate() }, set: { dueDate = CalendarDay(date: $0) }),
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.compact)
-                .font(MacRowFont.title)
-            }
-            if !model.tags.isEmpty {
-                Text("Tags")
-                    .font(MacRowFont.meta)
-                    .foregroundStyle(CarryOnColorStyle.coTextSecondary)
-                MacInspectorFlow(spacing: 6) {
-                    ForEach(model.tags.filter { tagIDs.contains($0.id) }) { tag in
-                        Button {
-                            tagIDs.removeAll { $0 == tag.id }
-                        } label: {
-                            CarryOnChip("#\(tag.name)  ×")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Remove \(tag.name) tag")
+    private var suggestionEntry: some View {
+        switch model.reviewSuggestionEntry(for: task, editorDirty: editorDirty) {
+        case .hidden:
+            EmptyView()
+        case .blocked(let message):
+            Text("Suggest with AI… — \(message)")
+        case .available(let kinds):
+            Menu("Suggest with AI…") {
+                ForEach(kinds, id: \.rawValue) { kind in
+                    Button(kind == .firstStep ? "Suggest a first step" : "Suggest clearer wording") {
+                        suggesting = SuggestionRequest(kind: kind)
                     }
-                    Menu {
-                        ForEach(model.tags.filter { !tagIDs.contains($0.id) }) { tag in
-                            Button("#\(tag.name)") { tagIDs.append(tag.id) }
-                        }
-                    } label: {
-                        CarryOnChip("+ Add tag")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .accessibilityLabel("Suggest with AI for \(task.title)")
         }
     }
 
     @ViewBuilder
-    private var handOffRow: some View {
+    private var handOffMenu: some View {
         switch handOff {
         case .hidden:
             EmptyView()
         case .enabled:
-            Button(AgentsCopy.handOff, action: onHandOff).buttonStyle(.carryOnSecondary).padding(.top, 14)
+            Button(AgentsCopy.handOff, action: onHandOff)
         case .disabled(let reason):
-            Button(AgentsCopy.handOff, action: onHandOff).buttonStyle(.carryOnSecondary).padding(.top, 14).disabled(true)
-            MacInspectorMetaText(text: reason)
+            Button("\(AgentsCopy.handOff) — \(reason)", action: onHandOff).disabled(true)
         }
-    }
-
-    @ViewBuilder
-    private var cancelTask: some View {
-        Button("Cancel task", role: .destructive) { onCommand(.cancel) }
-            .buttonStyle(.carryOnQuiet)
-            .padding(.top, 18)
     }
 
     // MARK: Action bar
@@ -474,7 +500,7 @@ struct TaskInspector: View {
             if writingFirstStep {
                 MacInspectorActionBar(actions: [
                     .primary("Make it the next step") { onCommand(.move(.next)) },
-                    .quiet("Back") { writingFirstStep = false },
+                    .quiet("Back", perform: returnFromFirstStep),
                 ])
             } else {
                 MacInspectorActionBar(
@@ -487,12 +513,16 @@ struct TaskInspector: View {
                 actions: [.primary("Done") { onCommand(.complete) }, .secondary("Not now") { showingNotNow = true }],
                 trailingNote: problem == nil ? "Saved as you type" : "Not saved yet")
         case .waiting:
-            MacInspectorActionBar(actions: [
-                .primary("Got it") { onCommand(.complete) }, .quiet("Move to Next") { onCommand(.move(.next)) },
-            ])
+            HStack(spacing: 8) {
+                Button("Got it") { onCommand(.complete) }.buttonStyle(.carryOnPrimary)
+                Button("Follow up") {}.buttonStyle(.carryOnQuiet).disabled(true)
+                    .help("Separate follow-up creation is unavailable in this inspector.")
+                Spacer(minLength: 0)
+            }
         case .someday:
             MacInspectorActionBar(actions: [
-                .primary("Start it") { onCommand(.move(.next)) }, .quiet("Not needed") { onCommand(.cancel) },
+                .primary("Start it") { onCommand(.move(.next)) },
+                .quiet("Not needed") { onCommand(.cancel) },
             ])
         case .finished:
             MacInspectorActionBar(actions: [.secondary("Reopen…") { onCommand(.reopen) }])
@@ -512,6 +542,7 @@ struct TaskInspector: View {
                 .keyboardShortcut("s", modifiers: [.command])
             Button("Close task details") { onCommand(.close) }
                 .keyboardShortcut(.cancelAction)
+                .disabled(showingDueDay || showingNotNow)
         }
         .frame(width: 0, height: 0)
         .opacity(0)
@@ -522,11 +553,22 @@ struct TaskInspector: View {
 
     private func pickADay() {
         showingNotNow = false
-        showsDateAndTags = true
-        scrollTarget = "date-and-tags"
+        Task { @MainActor in showingDueDay = true }
     }
 
     // presentation-region: task inspector focus
+    private func closeDueDayPicker() {
+        dueDayFocused = false
+        restoreDueDayAfterDismissal = true
+        showingDueDay = false
+    }
+
+    private func restoreDueDayTrigger() {
+        guard restoreDueDayAfterDismissal else { return }
+        restoreDueDayAfterDismissal = false
+        Task { @MainActor in dueDayFocused = true }
+    }
+
     private func changeTheStep() {
         showingNotNow = false
         Task { @MainActor in fieldFocus = .title }
@@ -536,6 +578,12 @@ struct TaskInspector: View {
         writingFirstStep = true
         fieldFocus = .title
     }
+
+    private func returnFromFirstStep() {
+        writingFirstStep = false
+        fieldFocus = .title
+    }
+
     // presentation-region-end
 
     // MARK: Project creator
@@ -592,13 +640,6 @@ struct TaskInspector: View {
         return "Asked \(since.formatted(.relative(presentation: .named)))"
     }
 
-    private var propertySummary: String {
-        var parts: [String] = []
-        if dueDate != nil { parts.append("Due") }
-        if !tagIDs.isEmpty { parts.append(WorkspaceView.plural(tagIDs.count, "tag")) }
-        return parts.isEmpty ? "Optional" : parts.joined(separator: " · ")
-    }
-
     static func dueText(_ due: CalendarDay) -> String {
         "Due \(due.startDate().formatted(.dateTime.month(.abbreviated).day()))"
     }
@@ -629,7 +670,6 @@ private struct SuggestionRequest: Identifiable {
 struct TaskDetailExtras: View {
     let task: TaskRecord
     let model: BrainBuddyModel
-    let editorDirty: Bool
     let onDirtyChange: (Bool) -> Void
     @State private var newSubtask = ""
     @State private var newComment = ""
@@ -639,11 +679,12 @@ struct TaskDetailExtras: View {
     @State private var subtaskTitles: [SubtaskID: String] = [:]
     @State private var commentBodies: [CommentID: String] = [:]
     @State private var editingCommentIDs: Set<CommentID> = []
-    @State private var suggesting: SuggestionRequest?
+    @State private var addingStep = false
+    @State private var addingComment = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            MacInspectorSectionLabel("Steps inside")
+            sectionHeading("Steps inside", adding: $addingStep)
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(task.subtasks.sorted { $0.orderKey < $1.orderKey }) { subtask in
                     SubtaskLine(
@@ -666,8 +707,13 @@ struct TaskDetailExtras: View {
                                 || !EditorLimits.fits(newSubtask, EditorLimits.title)
                         )
                 }
+                .frame(height: addingStep ? nil : 0)
+                .clipped()
+                .disabled(!addingStep)
+                .allowsHitTesting(addingStep)
+                .accessibilityHidden(!addingStep)
             }
-            MacInspectorSectionLabel("Comments")
+            sectionHeading("Comments", adding: $addingComment)
             VStack(alignment: .leading, spacing: 8) {
                 if task.comments.isEmpty {
                     MacInspectorBodyText(text: "None yet", quiet: true)
@@ -682,6 +728,7 @@ struct TaskDetailExtras: View {
                         }
                     )
                 }
+                VStack(alignment: .leading, spacing: 8) {
                 TextField("Write a comment", text: $newComment, axis: .vertical)
                     .lineLimit(2...4)
                     .inspectorField()
@@ -700,40 +747,24 @@ struct TaskDetailExtras: View {
                     newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         || !EditorLimits.fits(newComment, EditorLimits.comment)
                 )
+                }
+                .frame(height: addingComment ? nil : 0)
+                .clipped()
+                .disabled(!addingComment)
+                .allowsHitTesting(addingComment)
+                .accessibilityHidden(!addingComment)
             }
-            suggestionEntry
         }
-        // presentation-region: task inspector popover and sheets
-        .sheet(item: $suggesting) { request in
-            ReviewSuggestionSheetLoader(model: model, task: task, kind: request.kind) { suggesting = nil }
-        }
-        // presentation-region-end
         .onChange(of: newSubtask) { _, _ in reportDirty() }
         .onChange(of: newComment) { _, _ in reportDirty() }
     }
 
-    /// The bounded entry of the Weekly Review suggestions (D-04): only on a Next action while the
-    /// review is exposed. A choice here opens the sheet; nothing is requested or changed by it.
-    @ViewBuilder
-    private var suggestionEntry: some View {
-        switch model.reviewSuggestionEntry(for: task, editorDirty: editorDirty) {
-        case .hidden:
-            EmptyView()
-        case .blocked(let message):
-            MacInspectorMetaText(text: message, topPadding: 16)
-        case .available(let kinds):
-            Menu("Suggest with AI…") {
-                ForEach(kinds, id: \.rawValue) { kind in
-                    Button(kind == .firstStep ? "Suggest a first step" : "Suggest clearer wording") {
-                        suggesting = SuggestionRequest(kind: kind)
-                    }
-                }
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            .padding(.top, 16)
-            .accessibilityLabel("Suggest with AI for \(task.title)")
-            MacInspectorMetaText(text: "Suggestions are proposals. Nothing changes until you apply one.")
+    private func sectionHeading(_ title: String, adding: Binding<Bool>) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            MacInspectorSectionLabel(title)
+            Button { adding.wrappedValue.toggle() } label: { Text("+") }
+                .buttonStyle(.carryOnQuiet)
+                .accessibilityLabel(title == "Steps inside" ? "Add subtask" : "Write a comment")
         }
     }
 

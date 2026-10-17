@@ -9,7 +9,8 @@ truth (https://claude.ai/artifact/1bwKiw15U2jpZqwu5pTMg6); these files are a sna
   image to keep the files small, so read exact colour values from the token pages, not by
   sampling a screen render.
 - Each screen shows a 1280×800 Mac window with the number, title and a one-line caption.
-  Where a cell shows a dark window too (M09, M20), both are in the same PNG.
+  M09 and M20 contain one dark window each; the other PNGs contain one light window each.
+  Opposite-theme captures require a separate approved baseline for pixel acceptance.
 - If the board changes, ask for a re-render; do not edit these files by hand.
 
 ## Screens
@@ -24,7 +25,7 @@ truth (https://claude.ai/artifact/1bwKiw15U2jpZqwu5pTMg6); these files are a sna
 | `M06-Mac.png` | 06 Invite | 029 first run |
 | `M07-Mac.png` | 07 Inbox | core |
 | `M08-Mac.png` | 08 Next actions | core |
-| `M09-Mac.png` | 09 Project (light and dark) | core |
+| `M09-Mac.png` | 09 Project (dark) | core |
 | `M10-Mac.png` | 10 Create task | core |
 | `M11-Mac.png` | 11 Voice capture | core |
 | `M12-Mac.png` | 12 Quick capture | core |
@@ -35,7 +36,7 @@ truth (https://claude.ai/artifact/1bwKiw15U2jpZqwu5pTMg6); these files are a sna
 | `M17-Mac.png` | 17 Clarify with AI | core |
 | `M18-Mac.png` | 18 Waiting | core |
 | `M19-Mac.png` | 19 Someday | core |
-| `M20-Mac.png` | 20 Done (light and dark) | core |
+| `M20-Mac.png` | 20 Done (dark) | core |
 | `M21-Mac.png` | 21 Hand off | 030 agents |
 | `M22-Mac.png` | 22 Agent runs | 030 agents |
 | `M23-Mac.png` | 23 Needs you | 030 agents |

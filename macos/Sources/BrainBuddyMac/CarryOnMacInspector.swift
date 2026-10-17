@@ -608,6 +608,6 @@ struct MacNotNowPopoverContent: View {
         .padding(14)
         .frame(width: 300, alignment: .topLeading)
         .background(
-            CarryOnColorStyle.coSurfaceCard.opacity(0.95), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            MacBoardSurface.popover, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

@@ -11,6 +11,14 @@ app_dir="$(pwd)/.build/BrainBuddyMac.app"
 mkdir -p "$app_dir/Contents/MacOS"
 cp AppInfo.plist "$app_dir/Contents/Info.plist"
 cp .build/debug/BrainBuddyMac "$app_dir/Contents/MacOS/BrainBuddyMac"
+# Keep SwiftPM resources inside the signed application resource directory.
+mkdir -p "$app_dir/Contents/Resources"
+for resource_bundle in .build/debug/*.bundle; do
+    [ -d "$resource_bundle" ] || continue
+    bundle_name="${resource_bundle##*/}"
+    rm -rf "$app_dir/$bundle_name" "$app_dir/Contents/Resources/$bundle_name"
+    cp -R "$resource_bundle" "$app_dir/Contents/Resources/$bundle_name"
+done
 # Spec 037: no speech model in the bundle. Apple's on-device recognition needs none, and the
 # optional Whisper model is downloaded from Settings › Voice. The licence texts still ship with
 # the WhisperKit code the app links.

@@ -30,8 +30,15 @@ private func quickCaptureHotKeyPressed(
 
 /// The quick-capture panel: borderless and clear, so the card's glass is the whole window. A
 /// borderless panel refuses key status by default; this one takes it so the field can be typed in.
-private final class QuickCapturePanel: NSPanel {
+final class QuickCapturePanel: NSPanel {
     override var canBecomeKey: Bool { true }
+
+    override func makeKeyAndOrderFront(_ sender: Any?) {
+        // SwiftUI creates the field and its key-view loop during layout. AppKit must see that
+        // loop when it chooses the initial responder, including a global hot-key opening.
+        contentView?.layoutSubtreeIfNeeded()
+        super.makeKeyAndOrderFront(sender)
+    }
 }
 
 @MainActor
@@ -58,7 +65,7 @@ final class QuickCaptureController: ObservableObject {
             Unmanaged.passUnretained(self).toOpaque(), &eventHandler
         )
         guard handlerResult == noErr else {
-            registrationError = "Global Quick Capture shortcut could not be enabled. Use the toolbar button."
+            registrationError = "Global Quick Capture shortcut could not be enabled. Use File › Quick Capture."
             return
         }
         let key = EventHotKeyID(signature: quickCaptureSignature, id: quickCaptureHotKeyID)
@@ -69,7 +76,7 @@ final class QuickCaptureController: ObservableObject {
         guard keyResult == noErr else {
             if let eventHandler { RemoveEventHandler(eventHandler) }
             eventHandler = nil
-            registrationError = "⌃⌥⇧B is unavailable. Use Quick Capture in the toolbar."
+            registrationError = "⌃⌥⇧B is unavailable. Use File › Quick Capture."
             return
         }
         registrationError = nil
@@ -95,7 +102,7 @@ final class QuickCaptureController: ObservableObject {
         previousApplication = frontmost?.processIdentifier == NSRunningApplication.current.processIdentifier
             ? nil : frontmost
         let panel = QuickCapturePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 160),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 192),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: false
         )
@@ -134,7 +141,7 @@ final class QuickCaptureController: ObservableObject {
 /// never waits for the network (FR-010). Drawn as board "12 Quick capture · Mac"
 /// (`MacQuickCaptureCard`): Return saves, Esc closes.
 @MainActor
-private struct QuickCaptureView: View {
+struct QuickCaptureView: View {
     let model: BrainBuddyModel
     /// The global shortcut, or nil when it could not be registered.
     let shortcut: String?
@@ -153,16 +160,18 @@ private struct QuickCaptureView: View {
         MacQuickCaptureCard(
             shortcut: shortcut, tokens: MacCaptureTokens.labels(in: title), error: error,
             saveDisabled: cleanTitle.isEmpty || !EditorLimits.fits(cleanTitle, EditorLimits.title), busy: isSaving,
-            onSave: save, onClose: requestClose
+            voicePhase: .idle, requestingPermission: false,
+            onSave: save, onClose: requestClose, onMic: {}
         ) {
             TextField("What's on your mind?", text: $title)
                 .textFieldStyle(.plain)
                 .macQuickCaptureField()
                 .disabled(isSaving)
+                .accessibilityIdentifier("quick-capture-title")
                 .focused($titleFocused)
                 .onSubmit(save)
         }
-        .task { titleFocused = true }
+        .defaultFocus($titleFocused, true, priority: .userInitiated)
         .alert("Discard quick capture?", isPresented: $confirmingDiscard) {
             Button("Keep editing", role: .cancel) {}
             Button("Discard", role: .destructive, action: onClose)

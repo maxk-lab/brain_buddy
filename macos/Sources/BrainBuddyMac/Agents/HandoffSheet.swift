@@ -42,6 +42,7 @@ struct HandoffSheet: View {
     @Environment(\.openSettings) private var openSettings
     @FocusState private var passwordFocused: Bool
     @FocusState private var agentFocus: String?
+    @State private var contentHeight: CGFloat = 360
 
     init?(model: BrainBuddyModel, task: TaskRecord, onClose: @escaping () -> Void) {
         guard let server = task.serverID, let account = model.workspace.account else { return nil }
@@ -54,16 +55,34 @@ struct HandoffSheet: View {
             onSent: { _ in await runs.refresh() }))
     }
 
+    // M21's receipt uses the compact 13 pt sheet text with a 1.5 line box.
+    private static let receiptBody = TypeStyle(
+        face: CarryOnFontFace.action, weight: 400, iosSize: 13, macSize: 13,
+        lineHeight: 1.5, tracking: 0, .body)
+    private static let receiptTitle = TypeStyle(
+        face: CarryOnFontFace.action, weight: 600, iosSize: 13, macSize: 13,
+        lineHeight: 1.5, tracking: 0, .body)
+
     private var busy: Bool { flow.phase == .sending }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(verbatim: AgentsCopy.handToAgent).font(MacRowFont.titleStrong).foregroundStyle(CarryOnColorStyle.coTextPrimary)
-            Text(verbatim: AgentsCopy.handOffIntro).font(MacRowFont.meta).foregroundStyle(CarryOnColorStyle.coTextSecondary)
-            content
+            MacInspectorTitle(text: AgentsCopy.handToAgent, serif: true, size: 24)
+            Text(verbatim: AgentsCopy.handOffIntro).font(MacRowFont.title).foregroundStyle(CarryOnColorStyle.coTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) { content }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+            }
+                .frame(height: min(contentHeight, 440))
+                .scrollBounceBehavior(.basedOnSize)
             buttons
         }
-        .padding(20).frame(width: 460)
+        .padding(.horizontal, 26).padding(.vertical, 24).frame(width: 520)
+        .frame(maxHeight: 680)
+        .background(MacBoardSurface.floating)
         .task { await flow.start() }
         .onChange(of: model.agentAvailability.relayEnabled) { _, on in
             if !HandOffControl.sheetStaysOpen(relayEnabled: on) { onClose() }
@@ -96,16 +115,25 @@ struct HandoffSheet: View {
     }
 
     private var agentRows: some View {
-        VStack(spacing: 6) {
+        LazyVGrid(columns: [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 8) {
             ForEach(flow.agents) { agent in
                 let selected = agent.id == flow.selectedID
                 Button { Task { await flow.select(agent.id) } } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(verbatim: agent.name).font(MacRowFont.titleStrong).foregroundStyle(CarryOnColorStyle.coTextPrimary)
-                        Text(verbatim: agent.detail).font(MacRowFont.meta).foregroundStyle(CarryOnColorStyle.coTextSecondary)
+                    HStack(spacing: 10) {
+                        MacBoardIconView(icon: .agentRun, size: 18).foregroundStyle(CarryOnColorStyle.coTextPrimary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(verbatim: agent.name).font(MacRowFont.titleStrong).foregroundStyle(CarryOnColorStyle.coTextPrimary)
+                            Text(verbatim: agent.detail).font(MacRowFont.meta).foregroundStyle(CarryOnColorStyle.coTextSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(selected ? CarryOnColorStyle.coSurfaceSelected : .coSurfaceCard, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .padding(12).frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
+                    .background(CarryOnColorStyle.coSurfaceCard, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(selected ? CarryOnColorStyle.coTextPrimary : .coSurfaceCard, lineWidth: 2)
+                    }
                 }
                 .buttonStyle(.plain).disabled(busy)
                 .focusable().focused($agentFocus, equals: agent.id)
@@ -114,8 +142,8 @@ struct HandoffSheet: View {
         }
         .onMoveCommand { direction in
             switch direction {
-            case .up: Task { await flow.moveSelection(by: -1) }
-            case .down: Task { await flow.moveSelection(by: 1) }
+            case .up, .left: Task { await flow.moveSelection(by: -1) }
+            case .down, .right: Task { await flow.moveSelection(by: 1) }
             default: break
             }
         }
@@ -130,24 +158,30 @@ struct HandoffSheet: View {
     @ViewBuilder
     private var receipt: some View {
         if flow.phase == .previewing {
-            MacInspectorSectionLabel(AgentsCopy.whatItWillGet)
+            Text(AgentsCopy.whatItWillGet).font(MacRowFont.sectionHeader).foregroundStyle(CarryOnColorStyle.coTextSecondary).padding(.top, 6)
             ProgressView().controlSize(.small)
         } else if let manifest = flow.manifest {
-            MacInspectorSectionLabel(AgentsCopy.whatItWillGet)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(verbatim: manifest.title).font(MacRowFont.titleStrong)
-                if let note = manifest.details, !note.isEmpty { Text(verbatim: "Note: \(note)").font(MacRowFont.title) }
+            Text(AgentsCopy.whatItWillGet).font(MacRowFont.sectionHeader).foregroundStyle(CarryOnColorStyle.coTextSecondary).padding(.top, 6)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(verbatim: manifest.title).carryOnText(Self.receiptTitle)
+                if let note = manifest.details, !note.isEmpty {
+                    Text(verbatim: "Note: \(note)").carryOnText(Self.receiptBody)
+                }
                 ForEach(Array(manifest.supportingItems.enumerated()), id: \.offset) { _, item in
-                    Text(verbatim: "\(item.label): \(item.body)").font(MacRowFont.title)
+                    Text(verbatim: "\(item.label): \(item.body)").carryOnText(Self.receiptBody)
                 }
             }
             .foregroundStyle(CarryOnColorStyle.coTextPrimary)
-            .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-            .background(CarryOnColorStyle.coSurfaceCard, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(CarryOnColorStyle.coControlQuiet, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .accessibilityElement(children: .combine)
-            ForEach(Array([manifest.tierDisclosure, manifest.cancellationDisclosure, manifest.externalCopyNotice].enumerated()), id: \.offset) { _, line in
-                Text(verbatim: line).font(MacRowFont.meta).foregroundStyle(CarryOnColorStyle.coTextSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(Array([manifest.tierDisclosure, manifest.cancellationDisclosure, manifest.externalCopyNotice].enumerated()), id: \.offset) { _, line in
+                    Text(verbatim: line)
+                        .font(MacRowFont.action(size: 11, weight: 400, relativeTo: .caption))
+                        .foregroundStyle(CarryOnColorStyle.coTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
@@ -179,13 +213,13 @@ struct HandoffSheet: View {
     /// Return sends and Esc cancels. Send has no Return while its fields are unsatisfied.
     private var buttons: some View {
         HStack(spacing: 8) {
-            Spacer()
-            Button(AgentsCopy.cancel, action: onClose).buttonStyle(.carryOnSecondary)
-                .keyboardShortcut(.cancelAction).disabled(busy)
             if flow.phase != .noReadyAgent && flow.phase != .loadingAgents {
                 Button(sendTitle) { Task { await flow.tryAgain() } }
                     .buttonStyle(.carryOnPrimary).keyboardShortcut(.defaultAction).disabled(!(flow.canSend || failedBeforePreview))
             }
+            Button(AgentsCopy.cancel, action: onClose).buttonStyle(.carryOnQuiet)
+                .keyboardShortcut(.cancelAction).disabled(busy)
+            Spacer(minLength: 0)
         }
     }
 

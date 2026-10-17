@@ -65,14 +65,25 @@ example `G-05.03`.
   `surface-card` box with title, note and project lines, the disclosure line, then
   buttons "Send to Hermes" (`.carryOnPrimary`) and "Cancel" (`.carryOnSecondary`),
   right-aligned.
-- **Agents tab** (G-06, M29): inside 028's Settings window; left a 200 pt bordered list
-  with + and − (`.carryOnQuiet`, glyph buttons) under it; right the details grid in 028's
-  row style (150 pt right-aligned `text-secondary` label, value, no trailing control), and
-  the button row Test again / Replace credential… / Edit… (`.carryOnSecondary`).
-- **Add new agent** (G-07, M30): a sheet over Settings, 440 pt wide, 028 row grid. The
-  credential type is a two-segment control (Bearer token | API key); the secret a secure
-  field; helpers in 12 pt `text-secondary`. Buttons "Cancel" and "Add and test"
-  (`.carryOnPrimary`).
+- **Agents tab** (G-06, M29): inside 028's Settings window; the approved PNG from PR #521
+  is authoritative for this layout. Left, a borderless 220 pt agent list with agent icons,
+  status dots and words, and a rounded `surface-card` selected row; circular secondary
+  + and − controls sit at the bottom. Right, a separate full-height `surface-card` has the
+  selected agent's serif title and status subtitle, then left-aligned 130 pt metadata
+  labels and values, and the content-left Test again / Replace credential… / Edit… row
+  (`.carryOnSecondary`). Long details scroll inside the card; read-only/offline notices
+  remain accessible below the two columns. The existing Settings shell and G-06 states
+  are unchanged (owner decision, 2026-10-17).
+- **Add new agent** (G-07, M30): the authoritative PNG shows a 420 pt frosted sheet over
+  Settings, using native regular material over `bg-ground`, with 22 pt padding, white
+  `surface-card` fields and helpers in 12 pt
+  `text-secondary`. The Credential label precedes a full-width stone two-segment control
+  (Bearer token | API key), with a white selected segment; the secure secret field follows
+  directly below it. Buttons are "Cancel" (quiet) and "Add and test" (`.carryOnStrong`,
+  ink). The existing Current password field remains in this form, making it taller
+  than the PNG. No separate password stage or credential workflow is introduced.
+  Server proof, cancellation and secret-wiping contracts remain unchanged; other
+  agent sheets retain their layout.
 - **Colour** (DSAgents "Only your moves get colour"): Needs you uses `text-accent`
   (terracotta); Running and Queued `text-secondary` (dust); Lost contact
   `status-warning` (ochre); Failed `status-danger` (oxblood) with the agent's words.
