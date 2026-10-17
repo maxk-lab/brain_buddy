@@ -39,7 +39,7 @@ extension AppTab {
     var symbolName: String {
         switch self {
         case .inbox: OpenList.inbox.symbolName
-        case .next: OpenList.next.symbolName
+        case .next: "stairs"
         case .today: "calendar"
         case .lists: "square.stack"
         case .search: "magnifyingglass"
