@@ -39,7 +39,7 @@ extension AppTab {
     var symbolName: String {
         switch self {
         case .inbox: OpenList.inbox.symbolName
-        case .next: OpenList.next.symbolName
+        case .next: "stairs"
         case .today: "calendar"
         case .lists: "square.stack"
         case .search: "magnifyingglass"
@@ -50,7 +50,7 @@ extension AppTab {
     var title: String {
         switch self {
         case .inbox: OpenList.inbox.title
-        case .next: OpenList.next.title
+        case .next: "Next"
         case .today: "Today"
         case .lists: "Lists"
         case .search: "Search"
@@ -61,7 +61,7 @@ extension AppTab {
 /// Other symbols used across screens, so the same concept always gets the
 /// same glyph.
 enum BBSymbol {
-    static let capture = "plus"
+    static let capture = "mic"
     static let project = "folder"
     static let archivedProjects = "archivebox"
     static let tag = "tag"
