@@ -115,6 +115,27 @@ class ReportTest(unittest.TestCase):
             self.assertEqual(checker.check_reports(rows, {}, rust), [])
             self.assertTrue(checker.check_reports(rows, rust, {}))
 
+    def test_027_fr_001_non_conformance_port_rows_need_rust_evidence_only(self) -> None:
+        rust = {"cap_cfg_001_check": "passed"}
+        for kind in ("config-test", "integration", "job-test", "deploy-check"):
+            row = _row("CAP-CFG-001")
+            row["evidence"]["kind"] = kind
+            with self.subTest(kind=kind):
+                # No Python report at all, and Python names that differ, are fine.
+                self.assertEqual(checker.check_reports([row], None, rust), [])
+                python = {"something_else": "passed"}
+                self.assertEqual(checker.check_reports([row], python, rust), [])
+                # Rust evidence is still required.
+                self.assertTrue(checker.check_reports([row], None, {}))
+        # A conformance port row alongside still requires the Python report.
+        mixed = [_row("CAP-CFG-001"), _row("CAP-CFG-002")]
+        mixed[0]["evidence"]["kind"] = "config-test"
+        rust = {"cap_cfg_001": "passed", "cap_cfg_002": "passed"}
+        errors = checker.check_reports(mixed, None, rust)
+        self.assertTrue(any("Python report" in e for e in errors))
+        errors = checker.check_reports(mixed, {"cap_cfg_002": "passed"}, rust)
+        self.assertEqual(errors, [])
+
     def test_027_fr_001_differing_matched_test_names_are_rejected(self) -> None:
         row = _row("CAP-HTTP-001")
         python = {"cap_http_001_python_only": "passed"}

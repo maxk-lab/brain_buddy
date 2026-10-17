@@ -15,10 +15,11 @@ Reports are written by the conformance harness: a JSON object whose
 ``{"name": ..., "status": ...}``. A test proves a row when its name equals the
 row's evidence id or starts with ``<evidence id>_``. When a report is given:
 
-* port rows need green evidence in the Python and the Rust report, and the two
-  reports must not differ for the row;
-* change rows need green evidence in the Rust report only;
-* remove rows need green (absence) evidence in the Rust report.
+* port rows with ``evidence.kind == "conformance"`` need green evidence in the
+  Python and the Rust report, and the two reports must not differ for the row;
+* every other port row (config-test, integration, job-test, deploy-check), change
+  row and remove row needs green evidence in the Rust report only (the Python
+  report is required only when a conformance port row exists).
 """
 
 from __future__ import annotations
@@ -104,27 +105,36 @@ def evidence_status(report: dict[str, str], evidence_id: str) -> str:
     return "passed" if all(s == "passed" for s in matched.values()) else "failed"
 
 
+def _is_conformance_port(row: dict) -> bool:
+    """Only conformance-evidenced port rows have a Python-side proof to compare."""
+    return (
+        row.get("disposition") == "port"
+        and (row.get("evidence") or {}).get("kind") == "conformance"
+    )
+
+
 def check_reports(
     rows: list[dict], python: dict[str, str] | None, rust: dict[str, str] | None
 ) -> list[str]:
     errors: list[str] = []
     if rust is None:
         errors.append("a Rust report is required (--rust-report): every row needs it")
-    if python is None and any(r.get("disposition") == "port" for r in rows):
-        errors.append("a Python report is required (--python-report): port rows need it")
+    if python is None and any(_is_conformance_port(r) for r in rows):
+        errors.append(
+            "a Python report is required (--python-report): conformance port rows need it"
+        )
     if errors:
         return errors
     for row in rows:
-        cid, disposition = row["id"], row.get("disposition")
+        cid = row["id"]
         evidence_id = (row.get("evidence") or {}).get("id", "")
-        want = {"rust": rust}
-        if disposition == "port":
-            want["python"] = python
+        both = _is_conformance_port(row)
+        want = {"rust": rust, **({"python": python} if both else {})}
         for side, report in want.items():
             status = evidence_status(report or {}, evidence_id)
             if status != "passed":
                 errors.append(f"{cid}: {side} evidence {evidence_id} is {status}")
-        if disposition == "port" and matched_tests(
+        if both and matched_tests(
             python or {}, evidence_id
         ) != matched_tests(rust or {}, evidence_id):
             errors.append(f"{cid}: Python and Rust conformance reports differ")
