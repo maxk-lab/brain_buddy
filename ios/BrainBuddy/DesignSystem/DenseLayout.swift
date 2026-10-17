@@ -1,7 +1,6 @@
 import SwiftUI
 
-// The compact layout every screen shares: the title sits on the toolbar's
-// line, rows are 44 pt (the hit target, grown by Dynamic Type), section
+// Dense rows are 44 pt (the hit target, grown by Dynamic Type), section
 // headers are the design system's small uppercase label, and grouped rows
 // keep their icons in one fixed column so text lines up from row to row.
 
@@ -14,11 +13,10 @@ extension BBMetrics {
 }
 
 extension View {
-    /// A screen's title, drawn large on the same line as the toolbar buttons
-    /// (`.inlineLarge`) instead of in its own band above the content.
+    /// A screen title using the board's large, left-aligned display style.
     func bbScreenTitle(_ title: String) -> some View {
         navigationTitle(title)
-            .toolbarTitleDisplayMode(.inlineLarge)
+            .toolbarTitleDisplayMode(.large)
     }
 
     /// One line of context under the title ("14 open tasks · Syncing…"),

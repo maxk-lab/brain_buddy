@@ -403,6 +403,10 @@ struct TaskListScreen: View {
         case .search:
             let count = result.totalCount
             parts.append(count == 1 ? "1 match" : "\(count) matches")
+        case .list(.inbox):
+            parts.append("\(result.openCount) things to sort")
+        case .list(.next):
+            parts.append("\(result.openCount) \(result.openCount == 1 ? "step" : "steps") you can start now")
         default:
             parts.append(result.openCount == 1 ? "1 open task" : "\(result.openCount) open tasks")
         }
@@ -435,24 +439,38 @@ private struct NextStepRows: View {
     let task: TaskRecord
 
     @Environment(Workspace.self) private var workspace
+    @Environment(AppRouter.self) private var router
     @Environment(ToastCenter.self) private var toasts
-    @State private var isCompleting = false
+    @State private var isActing = false
     @State private var completionEditorID = UUID().uuidString
 
     var body: some View {
-        TaskOpenButton(task.id) {
-            CarryOnNextStepCard(project: projectName, step: task.title)
+        VStack(spacing: 0) {
+            TaskOpenButton(task.id) {
+                CarryOnNextStepCard(project: projectName, step: task.title)
+            }
+            HStack(spacing: BBSpacing.s2) {
+                Button(action: complete) {
+                    Text("Done")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.carryOnPrimary)
+                .disabled(isActing)
+                .accessibilityLabel("Done, \(task.title)")
+                Button { router.presentTask(task.id) } label: {
+                    Text("Not now")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.carryOnSecondary)
+                .disabled(isActing)
+                .accessibilityLabel("Not now, \(task.title)")
+            }
+            .padding(.horizontal, BBCardRow.sideMargin)
+            .padding(.bottom, BBSpacing.s4)
         }
+        .background(BBColor.surfaceRaised, in: RoundedRectangle(cornerRadius: BBCardRow.radius))
         .bbBareRow()
         .taskActions(task)
-        Button(action: complete) {
-            Text("Done")
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.carryOnPrimary)
-        .disabled(isCompleting)
-        .accessibilityLabel("Done, \(task.title)")
-        .bbBareRow()
     }
 
     /// The project's name above the step; a task without a project says where it is.
@@ -461,18 +479,19 @@ private struct NextStepRows: View {
     }
 
     private func complete() {
-        guard !isCompleting else { return }
-        isCompleting = true
+        guard !isActing else { return }
+        isActing = true
         let task = task
         let workspace = workspace
         let toasts = toasts
         let editorID = completionEditorID
         Task {
             let completed = await TaskCommandRunner.complete(task, workspace: workspace, toasts: toasts, editorID: editorID)
-            isCompleting = false
+            isActing = false
             if completed { completionEditorID = UUID().uuidString }
         }
     }
+
 }
 
 /// The line under the title: the list's summary ("14 open tasks · filtered")
@@ -502,7 +521,7 @@ private struct ListSubtitle: ViewModifier {
         let _ = tick
         let sync = SyncStatusLabel.describe(workspace, now: Date()).text
         guard let summary else { return sync }
-        return summary + " · " + sync
+        return summary
     }
 }
 
