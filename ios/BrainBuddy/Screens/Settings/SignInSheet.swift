@@ -335,12 +335,6 @@ struct SignInSheet: View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
                 Rectangle().fill(.coBgGround).ignoresSafeArea()
-                Image(systemName: "figure.stairs")
-                    .font(.system(size: 48))
-                    .foregroundStyle(.coTextSecondary)
-                    .accessibilityHidden(true)
-                    .position(x: geometry.size.width / 2, y: geometry.size.height * 0.27)
-
                 VStack(spacing: CGFloat(CarryOnSpace.md)) {
                     Capsule().fill(.coControlQuietPressed)
                         .frame(width: 64, height: 6)
@@ -376,18 +370,20 @@ struct SignInSheet: View {
                             }
                             HStack(spacing: CGFloat(CarryOnSpace.sm)) {
                                 Button("Use a password instead") { step = .password; focused = .email }
-                                    .signInLink().disabled(isBusy)
+                                    .signInLink().fixedSize(horizontal: true, vertical: false).disabled(isBusy)
                                 Spacer(minLength: CGFloat(CarryOnSpace.sm))
-                                DisclosureGroup("Advanced", isExpanded: $showsAdvanced) {
-                                    VStack(alignment: .leading, spacing: CGFloat(CarryOnSpace.sm)) {
-                                        TextField("Server address", text: $serverAddress)
-                                            .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                                            .focused($focused, equals: .server).carryOnField()
-                                        Text("Use an https address. http works only for localhost, during development.")
-                                            .carryOnFont(CarryOnTypeScale.meta).foregroundStyle(.coTextSecondary)
-                                        Button("Use the default server") { serverAddress = SignInServerAddress.defaultString }
-                                            .signInLink()
-                                    }
+                                Button("Advanced") { showsAdvanced.toggle() }
+                                    .signInLink().fixedSize(horizontal: true, vertical: false).disabled(isBusy)
+                            }
+                            if showsAdvanced {
+                                VStack(alignment: .leading, spacing: CGFloat(CarryOnSpace.sm)) {
+                                    TextField("Server address", text: $serverAddress)
+                                        .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                                        .focused($focused, equals: .server).carryOnField()
+                                    Text("Use an https address. http works only for localhost, during development.")
+                                        .carryOnFont(CarryOnTypeScale.meta).foregroundStyle(.coTextSecondary)
+                                    Button("Use the default server") { serverAddress = SignInServerAddress.defaultString }
+                                        .signInLink()
                                 }
                                 .disabled(isBusy)
                             }
@@ -409,6 +405,13 @@ struct SignInSheet: View {
                 .frame(height: min(680, geometry.size.height - 24))
                 .background(.coBgGround)
                 .clipShape(.rect(topLeadingRadius: 32, topTrailingRadius: 32))
+
+                Image(systemName: "figure.stairs")
+                    .font(.system(size: CGFloat(CarryOnSpace.xxl) - CGFloat(CarryOnSpace.xs)))
+                    .foregroundStyle(.coTextSecondary)
+                    .accessibilityHidden(true)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height * 0.138)
+                    .allowsHitTesting(false)
             }
         }
         .background(.coBgGround)
