@@ -21,9 +21,8 @@ fn env() -> Config {
     Config::from_env().expect("BB_CONFORMANCE_BASE_URL and BRAIN_BUDDY_TEST_CONTROL_TOKEN")
 }
 
-/// Process-unique synthetic address. The Python server rejects the reserved
-/// `.invalid` TLD that `TestControl::new_owner` uses, so this file signs
-/// owners up on `example.com` instead.
+/// Process-unique synthetic address on `example.com`, for addresses the tests
+/// change an owner to.
 fn synthetic_email(prefix: &str) -> String {
     let t = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -36,19 +35,8 @@ fn synthetic_email(prefix: &str) -> String {
 async fn seed() -> Owner {
     let cfg = env();
     let control = TestControl::new(&cfg).expect("control");
-    let mut client = Client::new(&cfg).expect("client");
-    let invites = control.invites(1).await.expect("invite");
-    let code = invites["codes"][0].as_str().expect("invite code");
-    let email = synthetic_email("owner");
-    let reply = client
-        .post(
-            "/api/auth/signup",
-            &json!({ "email": email, "password": PASSWORD, "invite_code": code }),
-        )
-        .await
-        .expect("signup");
-    assert_status(&reply, 201, "synthetic signup");
-    Owner { email, client }
+    let client = Client::new(&cfg).expect("client");
+    control.new_owner(&client).await.expect("synthetic owner")
 }
 
 /// The signed-in account's id, read through `GET /api/account`.
