@@ -471,6 +471,90 @@ async fn cap_http_031_request_refuses_bad_origin_session_and_body() {
 }
 
 #[tokio::test]
+async fn cap_http_030_availability_rule_flag_off_and_selected_cohort() {
+    let _gate = GATE.lock().await;
+    case(
+        &["CAP-HTTP-030", "CAP-HTTP-031", "CAP-HTTP-033"],
+        "cap_http_030_availability_rule_flag_off_and_selected_cohort",
+        async {
+            let (http, control) = setup().await;
+            let outsider = owner(&http, &control).await;
+            let insider = owner(&http, &control).await;
+            let grant = take(pool().await);
+
+            // Flag off: start and token answer the same 404 as any unavailable
+            // call, before the start budget is touched.
+            control
+                .flag("cli_auth", "off", &[])
+                .await
+                .expect("flag off");
+            let start = http
+                .json("/api/auth/device/start", None, None, &json!({}))
+                .await;
+            let token = http.token(&"a".repeat(43)).await;
+            for (name, reply) in [("start", &start), ("token", &token)] {
+                assert_eq!(
+                    reply.status, 404,
+                    "{name} with the flag off: {}",
+                    reply.body
+                );
+                assert_eq!(reply.code(), "cli_auth_unavailable", "{name}");
+            }
+
+            // Selected cohort that leaves the owner out: the lookup is refused
+            // exactly like an unknown code; a cohort member still sees the grant.
+            control
+                .flag("cli_auth", "selected", &[insider.email.as_str()])
+                .await
+                .expect("flag selected");
+            let refused = http
+                .request_code(Some(&outsider.cookie), &grant.user_code)
+                .await;
+            let member = http
+                .request_code(Some(&insider.cookie), &grant.user_code)
+                .await;
+            // Restore before asserting so a failure cannot leave the flag off.
+            control.flag("cli_auth", "on", &[]).await.expect("flag on");
+            assert_eq!(refused.status, 404, "outside the cohort: {}", refused.body);
+            assert_eq!(refused.code(), "cli_auth_unavailable");
+            assert_eq!(member.status, 200, "inside the cohort: {}", member.body);
+            assert_eq!(member.json()["state"], "pending");
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn cap_http_031_browser_limit_per_ip_and_user_refuses_the_eleventh() {
+    let _gate = GATE.lock().await;
+    case(
+        &["CAP-HTTP-031", "CAP-HTTP-032"],
+        "cap_http_031_browser_limit_per_ip_and_user",
+        async {
+            let (http, control) = setup().await;
+            // The budget is per ip:user (10 per 600 s), so a fresh owner has its own.
+            let owner = owner(&http, &control).await;
+            for attempt in 1..=10 {
+                let reply = http.request_code(Some(&owner.cookie), "ZZZZ-ZZZZ").await;
+                assert_eq!(reply.status, 404, "lookup {attempt}: {}", reply.body);
+                assert_eq!(reply.code(), "cli_auth_unavailable");
+            }
+            let limited = http.request_code(Some(&owner.cookie), "ZZZZ-ZZZZ").await;
+            assert_eq!(limited.status, 429, "{}", limited.body);
+            assert_eq!(limited.code(), "rate_limited");
+            assert_eq!(limited.header("retry-after"), Some("60"));
+            // The decision route shares the same budget.
+            let decision = http
+                .decide(Some(&owner.cookie), "ZZZZ-ZZZZ", "approve", &owner.id)
+                .await;
+            assert_eq!(decision.status, 429, "{}", decision.body);
+            assert_eq!(decision.code(), "rate_limited");
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
 async fn cap_http_032_decision_approves_then_conflicts() {
     let _gate = GATE.lock().await;
     case(
