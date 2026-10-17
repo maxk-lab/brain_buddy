@@ -110,17 +110,17 @@ struct CaptureAccessory: View {
             router.presentCapture(context)
         } label: {
             HStack(spacing: BBSpacing.s2) {
+                Text(prompt)
+                    .font(BBFont.body)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
                 Image(systemName: BBSymbol.capture)
                     .font(BBFont.bodyMedium)
-                    .foregroundStyle(BBColor.brandText)
-                ViewThatFits(in: .horizontal) {
-                    Text(prompt + "…")
-                    Text("Add")
-                }
-                .font(BBFont.body)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                Spacer(minLength: 0)
+                    .foregroundStyle(BBColor.onBrand)
+                    .frame(width: BBMetrics.hitTarget, height: BBMetrics.hitTarget)
+                    .background(BBColor.brandFill, in: Circle())
             }
             .padding(.horizontal, BBSpacing.s4)
             .frame(maxWidth: .infinity, minHeight: BBMetrics.hitTarget)
@@ -128,15 +128,13 @@ struct CaptureAccessory: View {
         }
         .buttonStyle(.plain)
         .modifier(SidebarCaptureGlass(isEnabled: drawsGlass))
-        // The label starts with the visible words, so Voice Control's
-        // "Tap Add to inbox" (or "Tap Add" when only "Add" fits) works.
+        // The full prompt remains available when the visible text is truncated.
         .accessibilityLabel(prompt)
         .accessibilityInputLabels([Text(prompt), Text("Add"), Text("Capture"), Text("Capture a task")])
         .accessibilityHint("Opens capture.")
     }
 
-    /// The visible prompt without its ellipsis, for example "Add to inbox",
-    /// "Add a next action" or "Add to Errands".
+    /// The visible prompt.
     static func prompt(for context: CaptureContext, workspace: Workspace) -> String {
         if let projectID = context.projectID, let project = workspace.project(projectID) {
             return "Add to \(project.name)"
@@ -145,8 +143,7 @@ struct CaptureAccessory: View {
             return "Add a task tagged \(tag.name)"
         }
         switch context.list {
-        case .inbox: return "Add to inbox"
-        case .next: return "Add a next action"
+        case .inbox, .next: return "What feels heaviest?"
         case .waiting: return "Add to \(OpenList.waiting.title)"
         case .someday: return "Add to \(OpenList.someday.title)"
         }
