@@ -266,7 +266,7 @@ struct SettingsRow<Value: View, Trailing: View>: View {
                     .frame(width: 150, alignment: .trailing)
                 value.frame(maxWidth: .infinity, alignment: .leading)
             }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
             trailing
         }
         .padding(.vertical, 6)

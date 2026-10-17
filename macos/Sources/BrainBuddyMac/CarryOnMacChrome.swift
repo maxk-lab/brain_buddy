@@ -1,3 +1,4 @@
+import AppKit
 import BrainBuddyAgents
 import BrainBuddyDesign
 import BrainBuddyMacCore
@@ -5,6 +6,27 @@ import SwiftUI
 
 // The Mac window's chrome in the Carry On design system (board "07 Inbox · Mac"): the brand
 // mark, the sidebar's section headers and rows, and the list header. Presentation only.
+
+/// Mac board surfaces sampled from the owner's PNGs, in sRGB. These floating Mac
+/// surfaces differ from the shared phone sidebar's sunken fill; do not change that role.
+/// Pin the base colours so wallpaper tinting does not replace the accepted palette.
+enum MacBoardSurface {
+    static let sidebar = CarryOnColorStyle(ThemedColor(light: RGBColor(0xF0ECE1), dark: RGBColor(0x282622)))
+    static let floating = CarryOnColorStyle(ThemedColor(light: RGBColor(0xF4F1EA), dark: RGBColor(0x232220)))
+    static let popover = CarryOnColorStyle(ThemedColor(light: RGBColor(0xF5F2EC), dark: RGBColor(0x2A2926)))
+    static let outline = CarryOnColorStyle(ThemedColor(light: RGBColor(0xCBC5B9), dark: RGBColor(0x8A8478)))
+}
+
+/// Keep every pane usable when an inspector opens, including the native sidebar's outer inset.
+@MainActor
+enum MacWindowGeometry {
+    static let canvasMinimumWidth: CGFloat = CarryOnLayout.MacWindow.canvasMinimumWidth
+    static let sidebarOuterInset: CGFloat = CarryOnLayout.MacWindow.sidebarOuterInset
+    static var minimumWidth: CGFloat {
+        CarryOnLayout.MacWindow.sidebarColumnWidth + sidebarOuterInset
+            + canvasMinimumWidth + TaskInspector.width(for: .inbox)
+    }
+}
 
 /// Instrument faces at the board's own sizes, which differ from the type scale in places.
 private enum MacChromeFont {
@@ -161,7 +183,7 @@ struct MacSidebarRowLabel: View {
             }
         }
         .padding(.horizontal, 10)
-        .frame(height: 29)
+        .frame(height: CarryOnLayout.MacWindow.sidebarRowHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             if selected {
@@ -261,5 +283,76 @@ struct MacListHeaderTitle<TitleView: View, Accessory: View>: View {
 extension MacListHeaderTitle where TitleView == Text, Accessory == EmptyView {
     init(title: String, caption: String) {
         self.init(title: title, caption: caption, accessory: { EmptyView() }, titleView: { $0 })
+    }
+}
+
+/// One M07 command per native toolbar item, with its own accessible name.
+struct MacWindowToolbarButton: View {
+    enum Command { case newStep, voice, quickOpen }
+    let command: Command
+    let action: () -> Void
+
+    private var title: String {
+        switch command {
+        case .newStep: "New step"
+        case .voice: "Voice to task draft"
+        case .quickOpen: "Quick Open"
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: CarryOnSpace.xs) {
+                switch command {
+                case .newStep:
+                    Image(systemName: "plus")
+                    Text("New step")
+                    Text("⌘N").foregroundStyle(.coTextSecondary)
+                case .voice:
+                    Image(systemName: "mic")
+                case .quickOpen:
+                    Image(systemName: "magnifyingglass")
+                    Text("⌘O").foregroundStyle(.coTextSecondary)
+                }
+            }
+            .foregroundStyle(.coTextPrimary)
+        }
+        .accessibilityLabel(title)
+        .help(title)
+        .carryOnFont(CarryOnTypeScale.body)
+        .buttonStyle(.glass)
+        .tint(.clear)
+        .buttonBorderShape(.capsule)
+        .fixedSize()
+    }
+}
+
+/// Keep native List keyboard selection while the board owns row geometry and selection fill.
+struct MacSidebarSelectionStyle: NSViewRepresentable {
+    func makeNSView(context: Context) -> SelectionStyleView { SelectionStyleView() }
+    func updateNSView(_ view: SelectionStyleView, context: Context) { view.needsLayout = true }
+
+    final class SelectionStyleView: NSView {
+        override func layout() {
+            super.layout()
+            var ancestor = superview
+            while let view = ancestor {
+                guard !(view is NSSplitView) else { return }
+                if let table = table(in: view) {
+                    table.selectionHighlightStyle = .none
+                    table.intercellSpacing.height = 0
+                    return
+                }
+                ancestor = view.superview
+            }
+        }
+
+        private func table(in view: NSView) -> NSTableView? {
+            if let table = view as? NSTableView { return table }
+            for child in view.subviews {
+                if let table = table(in: child) { return table }
+            }
+            return nil
+        }
     }
 }

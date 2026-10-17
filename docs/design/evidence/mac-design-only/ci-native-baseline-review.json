@@ -1,0 +1,242 @@
+[
+  {
+    "name": "mac-agent-add-empty-light-native1x",
+    "actual_size": [
+      840,
+      906
+    ],
+    "actual_sha256": "9312a735f20f23c0d0a5fe3f21b48a55d425e551c9ed42245b47a0f567f03263",
+    "old_size": [
+      840,
+      776
+    ],
+    "old_sha256": "cc5bdf39eb90b1cd4162ce61a890217a193ad1719bf0b96fdba8f42986171ccb"
+  },
+  {
+    "name": "mac-window-first-run-sidebar-light-native1x",
+    "actual_size": [
+      480,
+      1600
+    ],
+    "actual_sha256": "7049013a1da5cb2f8184f69469fae1d595cfa20aacfad803d30c90bda18cdf90",
+    "old_size": [
+      480,
+      1600
+    ],
+    "old_sha256": "56707d99153cddc249faab417424095b74d5f48c0ce6e2de5ba76e29532d087b",
+    "changed_percent": 96.50338541666666,
+    "max_delta": 7
+  },
+  {
+    "name": "mac-agent-add-filled-light-native1x",
+    "actual_size": [
+      840,
+      906
+    ],
+    "actual_sha256": "417202017ae091c69f1c1cf054b6beeb3fd06de4e97f78c835d67dc1f38fbce0",
+    "old_size": [
+      840,
+      776
+    ],
+    "old_sha256": "fdfa2edf9437b51f55c6af2e68e340f5900ed206c8912e2d6250aa6d7024d2d4"
+  },
+  {
+    "name": "mac-welcome-typed-light-native1x",
+    "actual_size": [
+      2060,
+      1494
+    ],
+    "actual_sha256": "6fac09c8fea0f044d5da33155accc18789d1d2bc69dca4ad65b16363a580361b",
+    "old_size": [
+      2060,
+      1494
+    ],
+    "old_sha256": "322c50fcaa195162469014f39bc90084ddc0954a28222169d6f2d640435783a6",
+    "changed_percent": 7.971140224327732,
+    "max_delta": 231
+  },
+  {
+    "name": "mac-agent-add-empty-dark-native1x",
+    "actual_size": [
+      840,
+      906
+    ],
+    "actual_sha256": "4ab8d3353e0c673dd48b73d99b2255854d40dbd479552f329a8976f2d68e35cc",
+    "old_size": [
+      840,
+      776
+    ],
+    "old_sha256": "7188f79830df5e9c906e68cb36674486f0159f537cd9538818e209f676bd1fe5"
+  },
+  {
+    "name": "mac-window-first-run-sidebar-dark-native1x",
+    "actual_size": [
+      480,
+      1600
+    ],
+    "actual_sha256": "ae1a01db4793641b6db1bb0234d4bdf1bd04784c8c00517a0dd07d7842d0a82e",
+    "old_size": [
+      480,
+      1600
+    ],
+    "old_sha256": "47ca5a53c463ae8605089942973ff3114f99010e6daa783df3f240d9f748904f",
+    "changed_percent": 96.45651041666666,
+    "max_delta": 12
+  },
+  {
+    "name": "mac-welcome-typed-dark-native1x",
+    "actual_size": [
+      2060,
+      1494
+    ],
+    "actual_sha256": "bf01d101fae204162684c4d0e6c1a0f15139d40a0ca4474957691bb0ec05141d",
+    "old_size": [
+      2060,
+      1494
+    ],
+    "old_sha256": "c78f45932ab5d40c471d53fc915a3d3a2d3eb0b1eebca7fefbaa57f669a9947e",
+    "changed_percent": 7.988296226979114,
+    "max_delta": 205
+  },
+  {
+    "name": "mac-agent-add-filled-dark-native1x",
+    "actual_size": [
+      840,
+      906
+    ],
+    "actual_sha256": "23d7e403dc30c511dd8a399255c71b30ba4e44a0848d4064861c26a0093c04e0",
+    "old_size": [
+      840,
+      776
+    ],
+    "old_sha256": "315cf6a7ea86d9257621141caa6ca91bc005551cc817be46ea52c680fe167dfa"
+  },
+  {
+    "name": "mac-window-sidebar-light-native1x",
+    "actual_size": [
+      480,
+      1600
+    ],
+    "actual_sha256": "48c298dd425727a66191d428e1ee4a1f5aa1452997ef160922e82c70b591ecc4",
+    "old_size": [
+      480,
+      1600
+    ],
+    "old_sha256": "a2e3a9a52b07a2b3808a0c80f1b84c9ba3e9e6ae1e928a05d58242a663efa1cc",
+    "changed_percent": 96.463671875,
+    "max_delta": 7
+  },
+  {
+    "name": "mac-window-sidebar-dark-native1x",
+    "actual_size": [
+      480,
+      1600
+    ],
+    "actual_sha256": "86c50a7f4116a7d3fa3df43557d737b7161a554765f012aa2c1fc49639426dc7",
+    "old_size": [
+      480,
+      1600
+    ],
+    "old_sha256": "0062f980026f518b07691e03a4f9e283a072e1e377ba1b13a3ddaa4c57f513c0",
+    "changed_percent": 96.419140625,
+    "max_delta": 12
+  },
+  {
+    "name": "mac-window-tags-sidebar-light-native1x",
+    "actual_size": [
+      480,
+      1600
+    ],
+    "actual_sha256": "bc0507d4f5409580663a3ac9ae4426a47193ab20345fdb5946952dcfd2c18763",
+    "old_size": [
+      480,
+      1600
+    ],
+    "old_sha256": "bec7bd9c6d9137581dd66781b52560a158ce510f99c31bb867a53ceafa9b8e42",
+    "changed_percent": 96.45677083333334,
+    "max_delta": 88
+  },
+  {
+    "name": "mac-all-runs-empty-light-native1x",
+    "actual_size": [
+      2064,
+      1496
+    ],
+    "actual_sha256": "41b17f913594f14737ae352e7ea3fe95f7ec7fc8deabab71ce624e042ab3f2f3",
+    "old_size": [
+      2064,
+      1496
+    ],
+    "old_sha256": "eaa951375b590fd7b7f89eb7eec702a92d414eefe8c036e321af8c47eb89f795",
+    "changed_percent": 1.626980734154127,
+    "max_delta": 205
+  },
+  {
+    "name": "mac-window-tags-sidebar-dark-native1x",
+    "actual_size": [
+      480,
+      1600
+    ],
+    "actual_sha256": "b0cca8c7a9d8e08d9f0dc1c1ebb00220f589043a76dcc8079347339ef449c442",
+    "old_size": [
+      480,
+      1600
+    ],
+    "old_sha256": "b181a8ab11b8e708cbb8a18d02c32e57e363ffa58ead49bf75eac36d420cd568",
+    "changed_percent": 96.416796875,
+    "max_delta": 104
+  },
+  {
+    "name": "mac-all-runs-empty-dark-native1x",
+    "actual_size": [
+      2064,
+      1496
+    ],
+    "actual_sha256": "3c53f49c4e8c44c1d54a696684b93f244a00a0e4c817b7150309b8fcdc749ba3",
+    "old_size": [
+      2064,
+      1496
+    ],
+    "old_sha256": "f31fd1c42788b034d4b100c7a025c1ce439edcf49ed7df8c587ab068281f0f7e",
+    "changed_percent": 1.6268511897359366,
+    "max_delta": 205
+  },
+  {
+    "name": "mac-settings-chrome-light-native1x",
+    "actual_size": [
+      1640,
+      176
+    ],
+    "actual_sha256": "c3ea455a3e2d7867085b5c718a2e032ba15584a64ee5ee4d4ad42d37e69ae52f",
+    "old_size": [
+      1640,
+      176
+    ],
+    "old_sha256": "1678998739c64644b2ed1734efdfbfc067e4a5e10a4fb2c026ed775e29053bc6",
+    "changed_percent": 95.14273835920177,
+    "max_delta": 9
+  },
+  {
+    "name": "mac-settings-chrome-dark-native1x",
+    "actual_size": [
+      1640,
+      176
+    ],
+    "actual_sha256": "b58a4d240764d31bc215f28892009393df115a3f1d88cd57a18dcdf42a3568b5",
+    "old_size": [
+      1640,
+      176
+    ],
+    "old_sha256": "55b4051c1c5e145967f574fb33c70f8e1b61838b5edded877eb6c28e72ebc072",
+    "changed_percent": 95.13061252771618,
+    "max_delta": 10
+  },
+  {
+    "name": "mac-next-action-cohort-light-native1x",
+    "actual_size": [
+      1800,
+      1200
+    ],
+    "actual_sha256": "097ea07f3d3fede7472c42935b8e0db509fa832cc55930f9b2a7b386cdcd0922"
+  }
+]

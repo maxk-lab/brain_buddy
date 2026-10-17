@@ -112,7 +112,8 @@
             let view = onGround(
                 MacQuickCaptureCard(
                     shortcut: "⌃⌥⇧B", tokens: MacCaptureTokens.labels(in: "Call Sam #calls"), error: nil,
-                    saveDisabled: false, surface: .standIn, onSave: {}, onClose: {}
+                    saveDisabled: false, voicePhase: .idle, requestingPermission: false, surface: .standIn,
+                    onSave: {}, onClose: {}, onMic: {}
                 ) {
                     Text("Call Sam #calls").macQuickCaptureField()
                 })

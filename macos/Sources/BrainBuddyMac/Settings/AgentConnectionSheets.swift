@@ -61,9 +61,10 @@ struct AgentEditorSheet: View {
     @FocusState private var focus: Field?
 
     private var mode: AgentEditorMode { editor.mode }
+    private var isAdd: Bool { mode == .add }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: isAdd ? CarryOnSpace.sm : 14) {
             MacSheetHeader(title: AgentSheetPlan.title(mode))
             if case .delete = mode {
                 Text(AgentsCopy.deleteNote).font(MacSheetFont.body)
@@ -71,7 +72,7 @@ struct AgentEditorSheet: View {
             }
             Group {
                 if AgentSheetPlan.showsDetails(mode) { AgentDetailFields(editor: editor, focus: $focus) }
-                if AgentSheetPlan.showsSecret(mode) {
+                if AgentSheetPlan.showsSecret(mode), !isAdd {
                     labelled(AgentSheetPlan.credentialLabel, helper: AgentsCopy.secretHelper) {
                         SecureField(AgentSheetPlan.credentialLabel, text: $editor.secret)
                             .textFieldStyle(.plain).macSheetField().focused($focus, equals: .secret)
@@ -80,7 +81,7 @@ struct AgentEditorSheet: View {
                 if editor.needsPassword {
                     labelled(AgentsCopy.currentPassword, helper: editor.destinationChanged ? AgentsCopy.confirmDestination : nil) {
                         SecureField(AgentsCopy.currentPassword, text: $editor.password)
-                            .textFieldStyle(.plain).macSheetField().focused($focus, equals: .password)
+                            .textFieldStyle(.plain).agentEditorField(isAdd: isAdd).focused($focus, equals: .password)
                             .onSubmit { if !AgentSheetPlan.returnPressesCancel(mode) { submit() } }
                     }
                 }
@@ -89,9 +90,12 @@ struct AgentEditorSheet: View {
             if case .failed(let notice) = editor.phase { failure(notice) }
             buttons
         }
-        .padding(20)
-        .frame(width: 440)
-        .macSheetSurface()
+        .padding(isAdd ? CarryOnLayout.MacAgentAdd.padding : 20)
+        .frame(width: isAdd ? CarryOnLayout.MacAgentAdd.width : 440)
+        .background {
+            if isAdd { Rectangle().fill(MacBoardSurface.floating) }
+            else { Rectangle().fill(CarryOnColorStyle.coSurfaceCard) }
+        }
         .onExitCommand(perform: cancel)
         .onChange(of: editor.phase) { _, phase in
             if phase == .done { onClose() }
@@ -105,7 +109,7 @@ struct AgentEditorSheet: View {
             Spacer()
             let cancelButton = Button(AgentsCopy.cancel, action: cancel).buttonStyle(.carryOnQuiet).disabled(editor.isBusy)
             let submitButton = Button(AgentSheetPlan.submitTitle(mode, phase: editor.phase), action: submit)
-                .buttonStyle(AgentSheetPlan.returnPressesCancel(mode) ? .carryOnSecondary : .carryOnPrimary)
+                .buttonStyle(AgentSheetPlan.returnPressesCancel(mode) ? .carryOnSecondary : (isAdd ? .carryOnStrong : .carryOnPrimary))
                 .disabled(!editor.canSubmit)
             if AgentSheetPlan.returnPressesCancel(mode) {
                 cancelButton.keyboardShortcut(.defaultAction)
