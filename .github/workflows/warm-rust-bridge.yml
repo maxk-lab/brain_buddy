@@ -1,8 +1,16 @@
 name: Warm Rust Apple bridge cache
 
 on:
+  # Only when the bridge's inputs change. A new Xcode on the runner image also
+  # changes the key, and the nightly CI run re-warms that case: its iOS and Mac
+  # lanes run on main and save the same entries on a miss.
   push:
     branches: [main]
+    paths:
+      - "rust/**"
+      - "ios/scripts/build-rust-bridge.sh"
+      - "ios/scripts/select-xcode.sh"
+      - ".github/workflows/warm-rust-bridge.yml"
 
 permissions:
   contents: read

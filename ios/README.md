@@ -158,7 +158,9 @@ is also pinned to a commit SHA (with its tag in a comment).
 
 [The trusted main-push cache producer](../.github/workflows/warm-rust-bridge.yml)
 prepares the existing full Apple and Mac-only Rust bridge artifacts in the `main`
-cache scope. Pull requests and merge-group branches can restore that shared cache;
+cache scope whenever a push to `main` changes the bridge's inputs (`rust/`, the
+bridge build script or the Xcode selection script). When a runner image brings a
+new Xcode, the nightly CI run's iOS and Mac lanes save the new entries instead. Pull requests and merge-group branches can restore that shared cache;
 a cache created only for one PR or queue branch is not shared with its siblings.
 
 Keys include the Rust source tree, bridge build script, selected Xcode version,
