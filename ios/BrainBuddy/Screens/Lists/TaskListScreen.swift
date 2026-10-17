@@ -457,7 +457,7 @@ private struct NextStepRows: View {
 
     /// The project's name above the step; a task without a project says where it is.
     private var projectName: String {
-        task.projectID.flatMap { workspace.project($0)?.name } ?? OpenList.next.title
+        task.projectID.flatMap { workspace.project($0)?.name } ?? "Now"
     }
 
     private func complete() {
