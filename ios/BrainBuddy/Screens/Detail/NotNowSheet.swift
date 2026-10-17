@@ -69,7 +69,7 @@ struct NotNowSheet: View {
             }
         }
         .bbScreenBackground()
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.fraction(0.74), .large])
         .presentationDragIndicator(.visible)
     }
 
