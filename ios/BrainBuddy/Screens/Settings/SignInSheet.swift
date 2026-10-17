@@ -406,9 +406,15 @@ struct SignInSheet: View {
                 .background(.coBgGround)
                 .clipShape(.rect(topLeadingRadius: 32, topTrailingRadius: 32))
 
-                Image(systemName: "figure.stairs")
-                    .font(.system(size: CGFloat(CarryOnSpace.xxl) - CGFloat(CarryOnSpace.xs)))
-                    .foregroundStyle(.coTextSecondary)
+                ZStack {
+                    Image(systemName: "figure.stairs")
+                        .font(.system(size: CGFloat(CarryOnSpace.xxl) - CGFloat(CarryOnSpace.xs)))
+                        .foregroundStyle(.coTextSecondary)
+                    Circle()
+                        .fill(Color(CarryOnPrimitive.oxblood300))
+                        .frame(width: CGFloat(CarryOnSpace.xxs), height: CGFloat(CarryOnSpace.xxs))
+                        .offset(x: -CGFloat(CarryOnSpace.xxs), y: -CGFloat(CarryOnSpace.md + CarryOnSpace.xxs))
+                }
                     .accessibilityHidden(true)
                     .position(x: geometry.size.width / 2, y: geometry.size.height * 0.138)
                     .allowsHitTesting(false)
