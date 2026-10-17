@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -95,6 +97,36 @@ class ModuleOwnership(unittest.TestCase):
         # Control is reachable only through bb_app::ports::control.
         src = tree({"tasks/mod.rs": "fn f() { bb_store::control::mark_applied(); }"})
         self.assertEqual(len(cg.app_violations(src)), 1)
+
+    def test_027_fr_008_app_control_is_reachable_only_through_its_port(self) -> None:
+        ok = tree(
+            {
+                "control.rs": "use crate::control::Ledger;",
+                "ports/control.rs": "use crate::control::{Ledger, apply};",
+                "ports/mod.rs": "pub mod control;",
+                "tasks/mod.rs": "use crate::ports::control::Control;",
+            }
+        )
+        self.assertEqual(cg.app_violations(ok), [])
+        for rel, bad in (
+            ("tasks/mod.rs", "use crate::control::Ledger;"),
+            ("review.rs", "fn f() { crate::control::apply(); }"),
+            ("ports/tasks.rs", "use crate::{control::Ledger};"),
+            ("lib.rs", "pub use crate::control::Ledger;"),
+        ):
+            with self.subTest(rel=rel):
+                self.assertEqual(len(cg.app_violations(tree({rel: bad}))), 1)
+
+    def test_027_fr_008_cargo_metadata_runs_from_the_rust_workspace(self) -> None:
+        calls: list[dict] = []
+
+        def fake_run(cmd: list[str], **kw: object) -> subprocess.CompletedProcess:
+            calls.append(kw)
+            return subprocess.CompletedProcess(cmd, 0, stdout='{"packages": []}')
+
+        with mock.patch.object(cg.subprocess, "run", fake_run):
+            cg.load_metadata(cg.RUST)
+        self.assertEqual(calls[0]["cwd"], cg.RUST)
 
     def test_027_fr_008_store_control_exception_is_only_mark_applied(self) -> None:
         ok = tree(

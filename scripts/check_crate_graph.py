@@ -103,19 +103,26 @@ def references(source: str, roots: tuple[str, ...]) -> list[Path_]:
 
 
 def app_violations(src: Path) -> list[str]:
-    """bb_app::<module> may import only bb_store::<its owner module>."""
+    """bb_app::<module> may import only bb_store::<its owner module>, and only
+    ``control`` and ``ports/control.rs`` may reach ``crate::control``."""
     out: list[str] = []
     for f in sorted(src.rglob("*.rs")):
         parts = f.relative_to(src).parts
         module = parts[0].removesuffix(".rs")
-        if module == "lib":
-            continue
-        if module == "ports":  # ports/<x>.rs is the port onto store module <x>
-            if len(parts) < 2 or parts[1].removesuffix(".rs") == "mod":
-                continue
+        if module == "ports" and len(parts) > 1:  # ports/<x>.rs is the port onto <x>
             module = parts[1].removesuffix(".rs")
+        text = f.read_text()
+        if module != "control":
+            out += [
+                f"{f}: bb_app::{module} reaches crate::{'::'.join(ref)}"
+                f" (control is reachable only through ports/control.rs)"
+                for ref in references(text, ("crate",))
+                if ref[:1] == ("control",)
+            ]
+        if module in ("lib", "ports", "mod"):
+            continue
         owner = OWNER_GROUP.get(module, module)
-        for ref in references(f.read_text(), ("bb_store",)):
+        for ref in references(text, ("bb_store",)):
             if ref[:1] != (owner,):
                 out.append(
                     f"{f}: bb_app::{module} imports bb_store::{'::'.join(ref)}"
@@ -145,6 +152,7 @@ def store_violations(src: Path) -> list[str]:
 
 
 def load_metadata(rust: Path) -> dict:
+    rust = rust.resolve()
     res = subprocess.run(
         [
             "cargo",
@@ -158,6 +166,9 @@ def load_metadata(rust: Path) -> dict:
         capture_output=True,
         text=True,
         check=False,
+        # rustup reads rust-toolchain.toml from the working directory, so run
+        # from the workspace to pin the same toolchain as the CI jobs.
+        cwd=rust,
     )
     if res.returncode:
         raise SystemExit(f"cargo metadata failed:\n{res.stderr}")
