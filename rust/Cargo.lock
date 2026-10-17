@@ -413,8 +413,10 @@ dependencies = [
 name = "bb-store"
 version = "0.1.0"
 dependencies = [
+ "bb-allure",
  "object_store",
  "sqlx",
+ "tokio",
 ]
 
 [[package]]
