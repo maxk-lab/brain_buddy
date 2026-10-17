@@ -13,8 +13,6 @@ use serde_json::{Value, json};
 use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-const PASSWORD: &str = "Conformance-pass-1!";
-
 /// Serializes the cases: each `case` call rewrites the shared run report, and
 /// concurrent read-merge-write cycles would drop entries.
 static GATE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
@@ -65,30 +63,15 @@ async fn enable_crt(cfg: &Config) {
         .expect("crt_canvas flag");
 }
 
-/// A synthetic owner signed in through the public signup route. The shared
-/// owner factory mints `@conformance.invalid` addresses, which the Python
-/// signup rejects as reserved, so this file mints its own.
+/// A synthetic owner (an `example.com` address, signed up through an invite
+/// from the test control API; the harness fixes the password).
 async fn owner(cfg: &Config) -> Owner {
-    let minted = TestControl::new(cfg)
+    let client = Client::new(cfg).expect("client");
+    TestControl::new(cfg)
         .expect("test control")
-        .invites(1)
+        .new_owner(&client)
         .await
-        .expect("invite");
-    let code = minted["codes"][0]
-        .as_str()
-        .expect("invite code")
-        .to_string();
-    let email = format!("crt-{:x}@conformance.example.com", unique());
-    let mut client = Client::new(cfg).expect("client");
-    let reply = client
-        .post(
-            "/api/auth/signup",
-            &json!({"email": email, "password": PASSWORD, "invite_code": code}),
-        )
-        .await
-        .expect("signup");
-    assert_eq!(reply.status, 201, "synthetic signup");
-    Owner { email, client }
+        .expect("synthetic owner")
 }
 
 /// One request on the owner's session. Headers ride on this request only.
