@@ -18,7 +18,6 @@ use reqwest::Method;
 use serde_json::{Value, json};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-const PASSWORD: &str = "Conformance-pass-1!";
 const TITLE_PROVIDER: &str = "deterministic";
 const NAVIGATOR_PROVIDER: &str = "openai";
 const CONSENT_TEXT_VERSION: u64 = 1;
@@ -47,21 +46,9 @@ fn unique() -> String {
     format!("{t:x}{:x}", N.fetch_add(1, Ordering::Relaxed))
 }
 
-/// Invite, signup, session cookie. The harness owner factory uses the
-/// reserved `.invalid` TLD, which the Python server's email validation
-/// rejects, so this file signs its synthetic owners up with `example.com`.
+/// A new synthetic owner (an `example.com` address) from the harness factory.
 async fn owner(env: &Env) -> Owner {
-    let invites = env.ctl.invites(1).await.expect("invite");
-    let code = invites["codes"][0].as_str().expect("invite code");
-    let email = format!("owner-{}@conformance.example.com", unique());
-    let mut client = env.anon.fresh();
-    let body = json!({ "email": email, "password": PASSWORD, "invite_code": code });
-    let reply = client
-        .post("/api/auth/signup", &body)
-        .await
-        .expect("signup");
-    assert_eq!(reply.status, 201, "synthetic signup: {}", reply.body);
-    Owner { email, client }
+    env.ctl.new_owner(&env.anon).await.expect("synthetic owner")
 }
 
 async fn call(c: &Client, method: Method, path: &str, body: Option<Value>) -> Reply {
