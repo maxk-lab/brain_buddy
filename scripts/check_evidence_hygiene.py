@@ -14,8 +14,10 @@ Missing roots are fine (the directories appear as later slices land).
 
 from __future__ import annotations
 
+import math
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 DEFAULT_ROOTS = ("contracts/fixtures", "specs/027-rust-server/evidence")
@@ -27,7 +29,7 @@ RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
         # cannot identify a real person, so synthetic addresses on them are fine.
         re.compile(
             r"[A-Za-z0-9._%+-]+@(?!(?:[A-Za-z0-9-]+\.)*(?:example\.(?:com|org|net)"
-            r"|[A-Za-z0-9-]+\.(?:test|invalid))\b)"
+            r"|[A-Za-z0-9-]+\.(?:test|invalid))(?![A-Za-z0-9-]|\.[A-Za-z0-9-]))"
             r"[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+"
         ),
     ),
@@ -43,10 +45,23 @@ RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
         re.compile(
             r"(?:\bsk-[A-Za-z0-9_-]{16,}|\bAKIA[0-9A-Z]{16}\b"
             r"|\bBearer\s+[A-Za-z0-9._~+/=-]{12,}"
+            r"|\bFlyV1\s+\S{12,}"
             r"|\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\."
-            r"|(?:session[_-]?(?:token|secret|cookie)|api[_-]?key|secret(?:[_-]?key)?"
-            r"|access[_-]?key(?:[_-]?id)?|password|cookie)\"?\s*[:=]\s*\"?"
-            r"[A-Za-z0-9._~+/=-]{8,})",
+            # Labelled secrets. The value class stops at whitespace, quotes and
+            # separators, so a password with punctuation in its first 8
+            # characters is still caught; obvious placeholders are exempt.
+            r"|[A-Za-z0-9_-]*(?:token|secret|passwd|password|api[_-]?key"
+            r"|access[_-]?key(?:[_-]?id)?|cookie|brainbuddy_session)"
+            r"\"?\s*[:=]\s*"
+            # Quoted values count as written; an unquoted value must carry a
+            # digit or symbol so prose such as "a token: cleanTitle" is ignored.
+            r"(?:\"(?!<|\$|\{|\*|\[|redacted)[^\s\"',;]{8,}"
+            r"|(?!<|\$|\{|\*|\[|redacted)(?=[^\s\"',;]*[^A-Za-z\s\"',;])"
+            r"[^\s\"',;]{8,})"
+            # Error codes ("validation_error") are not secrets: a ``code`` value
+            # must be long and carry a digit or capital to count.
+            r"|\bcode\"?\s*[:=]\s*\"?(?-i:(?=[A-Za-z0-9_-]*[0-9A-Z])"
+            r"[A-Za-z0-9_-]{20,}))",
             re.IGNORECASE,
         ),
     ),
@@ -81,6 +96,44 @@ def _strip_allowed_hashes(line: str) -> str:
     )
 
 
+# secrets.token_urlsafe(32) (invite codes, session tokens) is 43 base64url
+# characters. Anything that long, mixed-case, not pure hex, with few word
+# separators and token-like entropy is treated as a secret wherever it appears.
+# UUIDs are removed first so ``form_<uuid>`` identifiers do not fire.
+_UUID = re.compile(
+    r"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}"
+)
+_TOKEN_RUN = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{32,}(?![A-Za-z0-9_-])")
+# 20,000 sampled token_urlsafe(32) values never fell below 4.35 bits/char, while
+# word-built identifiers sit near 3.8-4.2.
+MIN_TOKEN_ENTROPY = 4.25
+MAX_TOKEN_SEPARATORS = 8
+
+
+def _entropy(value: str) -> float:
+    counts = Counter(value)
+    return -sum(n / len(value) * math.log2(n / len(value)) for n in counts.values())
+
+
+def _has_secret_token(line: str) -> bool:
+    for run in _TOKEN_RUN.findall(_UUID.sub("-", line)):
+        if re.fullmatch(r"[0-9A-Fa-f]+", run):
+            continue
+        if not (re.search(r"[a-z]", run) and re.search(r"[A-Z]", run)):
+            continue
+        # Identifiers in snake_case/kebab-case are word-separated; a token is not.
+        separators = len(re.findall(r"[_-]", run))
+        if separators > MAX_TOKEN_SEPARATORS:
+            continue
+        # Plain camelCase names (test method names) carry no digit or separator;
+        # only about 1 in 7,500 real tokens is that clean.
+        if not (separators or re.search(r"[0-9]", run)):
+            continue
+        if _entropy(run) >= MIN_TOKEN_ENTROPY:
+            return True
+    return False
+
+
 def scan_text(text: str) -> list[tuple[int, str]]:
     """Return ``(line number, rule name)`` for every violation in ``text``."""
     found: list[tuple[int, str]] = []
@@ -89,6 +142,8 @@ def scan_text(text: str) -> list[tuple[int, str]]:
         for name, pattern in RULES:
             if pattern.search(checked):
                 found.append((number, name))
+        if _has_secret_token(checked):
+            found.append((number, "high-entropy token"))
     return found
 
 
