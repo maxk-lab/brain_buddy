@@ -15,11 +15,11 @@
 //! The server must allow private destinations, as the Compose stack does with
 //! `BRAIN_BUDDY_AGENT_ALLOW_PRIVATE_DESTINATIONS=1`.
 //!
-//! Not covered black-box, and why: the success `204` of CAP-HTTP-185, the
-//! per-run 30/min and global 600/min push limits and the streamed (undeclared
-//! length) body cap. A verified push needs the per-run token, which the server
-//! mints and never shows, and the shared harness client can send neither a
-//! chunked body nor 600 requests without disturbing every other test.
+//! Not covered black-box, and why: the success `204` of CAP-HTTP-185 and its
+//! per-run 30/min and global 600/min push limits. A verified push needs the
+//! per-run token, which the server mints and never shows, and 600 requests
+//! would disturb every other test; PR-143 covers them in-process. The streamed
+//! (undeclared length) body cap is tested here over a raw chunked request.
 //!
 //! The synthetic owners sign up under `conformance.example.com`, the domain the
 //! shared `TestControl::new_owner` uses: the server's email validation refuses
@@ -820,7 +820,9 @@ async fn cap_http_178_dispatch_agent_run_is_confirmed_once_per_key() {
             );
 
             let foreign = keyed(&b, Method::POST, &path, Some(body.clone())).await;
-            assert_eq!(foreign.status, 404, "{}", foreign.body);
+            let absent_path = format!("/api/tasks/{ABSENT_TASK}/agent-runs");
+            let absent = keyed(&b, Method::POST, &absent_path, Some(body.clone())).await;
+            assert_indistinguishable(&foreign, &task_id, &absent, ABSENT_TASK);
 
             let key = format!("idem-{}", unique());
             let first = send(
@@ -1123,6 +1125,62 @@ async fn cap_http_184_cancel_agent_run_sends_cancel_and_closes_the_run() {
     .await;
 }
 
+/// A raw HTTP/1.1 push with `Transfer-Encoding: chunked` and no `Content-Length`,
+/// whose body (a JSON string) totals `total` bytes. The shared client always
+/// declares a length, so this speaks to the socket directly. Returns the
+/// status and the raw response text.
+async fn chunked_push(cfg: &Config, run: &str, token: &str, total: usize) -> (u16, String) {
+    use std::io::{Read, Write};
+    let authority = cfg
+        .base_url
+        .trim_start_matches("http://")
+        .trim_end_matches('/')
+        .to_string();
+    let epoch = cfg
+        .epoch
+        .map(|e| format!("X-Client-Epoch: {e}\r\n"))
+        .unwrap_or_default();
+    let head = format!(
+        "POST /api/a2a/push/{run}/{token} HTTP/1.1\r\nHost: {authority}\r\n{epoch}\
+         Content-Type: application/json\r\nTransfer-Encoding: chunked\r\n\
+         Connection: close\r\n\r\n"
+    );
+    // A JSON string of `total` bytes: two quotes around `total - 2` letters.
+    let mut payload = vec![b'"'];
+    payload.extend(std::iter::repeat_n(b'x', total - 2));
+    payload.push(b'"');
+    tokio::task::spawn_blocking(move || {
+        let mut stream = std::net::TcpStream::connect(&authority).expect("connect");
+        stream
+            .set_read_timeout(Some(Duration::from_secs(20)))
+            .expect("read timeout");
+        stream.write_all(head.as_bytes()).expect("send head");
+        // The server may answer and close before the last chunk: ignore write errors.
+        for chunk in payload.chunks(1_000) {
+            let frame = format!("{:x}\r\n", chunk.len());
+            let sent = stream
+                .write_all(frame.as_bytes())
+                .and_then(|()| stream.write_all(chunk))
+                .and_then(|()| stream.write_all(b"\r\n"));
+            if sent.is_err() {
+                break;
+            }
+        }
+        let _ = stream.write_all(b"0\r\n\r\n");
+        let mut raw = Vec::new();
+        let _ = stream.read_to_end(&mut raw);
+        let text = String::from_utf8_lossy(&raw).into_owned();
+        let status = text
+            .split_whitespace()
+            .nth(1)
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        (status, text)
+    })
+    .await
+    .expect("raw push task")
+}
+
 #[tokio::test]
 async fn cap_http_185_push_callback_refuses_identically_and_caps_the_body() {
     case(
@@ -1135,14 +1193,6 @@ async fn cap_http_185_push_callback_refuses_identically_and_caps_the_body() {
             let a = owner(&c).await;
             let handoff = blocked_handoff(&a).await;
             let id = handoff.run_id().to_string();
-            let cancel = keyed(
-                &a,
-                Method::POST,
-                &format!("/api/agent-runs/{id}/cancel"),
-                None,
-            )
-            .await;
-            expect(&cancel, 200);
 
             // No session: the caller is the agent. Each refusal is the same answer.
             let anonymous = c.client.fresh();
@@ -1155,8 +1205,17 @@ async fn cap_http_185_push_callback_refuses_identically_and_caps_the_body() {
                 }
             };
             let unknown = push(ABSENT_RUN.into(), "forged-token", 0).await;
+            // A real run that is still open (blocked on the owner), forged token.
             let forged = push(id.clone(), "forged-token", 0).await;
-            // The run is closed (cancelled) here, so this is also the closed-run case.
+            let cancel = keyed(
+                &a,
+                Method::POST,
+                &format!("/api/agent-runs/{id}/cancel"),
+                None,
+            )
+            .await;
+            expect(&cancel, 200);
+            // The run is now closed (cancelled): the closed-run case.
             let closed = push(id.clone(), "another-forged-token", 0).await;
             for refusal in [&unknown, &forged, &closed] {
                 assert_eq!(refusal.status, 403, "{}", refusal.body);
@@ -1187,6 +1246,17 @@ async fn cap_http_185_push_callback_refuses_identically_and_caps_the_body() {
                 let over = push(run, "forged-token", 64_001 - overhead).await;
                 assert_eq!(over.status, 413, "{}", over.body);
                 assert_eq!(message(&over), "Notification payload is too large.");
+            }
+
+            // No declared length: the cap is enforced while the chunks stream in.
+            let cfg = Config::from_env().expect("conformance configuration");
+            for run in [id.clone(), ABSENT_RUN.to_string()] {
+                let (status, body) = chunked_push(&cfg, &run, "forged-token", 64_001).await;
+                assert_eq!(status, 413, "streamed over the cap: {body}");
+                assert!(
+                    body.contains("Notification payload is too large."),
+                    "streamed over the cap: {body}"
+                );
             }
         },
     )
