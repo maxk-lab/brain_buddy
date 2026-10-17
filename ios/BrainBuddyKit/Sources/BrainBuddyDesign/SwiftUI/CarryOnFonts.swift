@@ -11,7 +11,12 @@
         public static func register() -> Bool { registered }
 
         private static let registered: Bool = {
-            let urls = Bundle.module.urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? []
+            // App assembly puts package resources in Contents/Resources. Resolve
+            // that bundle before SwiftPM's development-only absolute fallback.
+            let packaged = Bundle.main.resourceURL?
+                .appendingPathComponent("BrainBuddyKit_BrainBuddyDesign.bundle")
+            let resources = packaged.flatMap { Bundle(url: $0) } ?? Bundle.module
+            let urls = resources.urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? []
             for url in urls {
                 // A face already registered (a second test bundle in one process) is not an error.
                 CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)

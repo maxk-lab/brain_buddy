@@ -43,6 +43,8 @@ struct AgentRunSectionView: View {
     var onHandOff: (() -> Void)?
     @State private var section: AgentRunSectionModel
     @FocusState private var runFocused: Bool
+    @FocusState private var editorFocused: String?
+    @State private var loading = true
 
     init?(model: BrainBuddyModel, task: TaskRecord, onHandOff: (() -> Void)? = nil) {
         guard let server = task.serverID, let account = model.workspace.account else { return nil }
@@ -63,18 +65,61 @@ struct AgentRunSectionView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let run = section.shown {
-                runContent(run, AgentRunBlock(run, now: section.now(), relay: model.agentAvailability.relayEnabled && onHandOff != nil))
+        MacInspectorPanel(width: 380) {
+            header
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if let run = section.shown {
+                        runContent(run, block(for: run))
+                    } else {
+                        if loading { ProgressView().controlSize(.small).padding(.top, 22) }
+                        MacInspectorMetaText(text: loading ? AgentsCopy.runsLoading : AgentsCopy.runsFailed)
+                        if !loading {
+                            Button(AgentsCopy.tryAgain) { Task { await load() } }.buttonStyle(.carryOnSecondary).padding(.top, 8)
+                        }
+                    }
+                    earlierRuns
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            earlierRuns
+        } actionBar: {
+            footer
         }
         .task(id: refreshKey) {
-            await section.load()
+            await load()
             takeRequestedFocus()
         }
         .onAppear { takeRequestedFocus() }
         .onChange(of: model.agentRuns.inspectorFocusPending) { _, _ in takeRequestedFocus() }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                if let projectID = task.projectID {
+                    Circle().fill(Color(inspectorProjectDot(model.project(projectID)?.color))).frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
+                    Text(verbatim: model.projectLabel(projectID))
+                    Text(verbatim: "·")
+                }
+                Text(verbatim: section.shown?.agentName ?? item?.agentName ?? AgentsCopy.sidebar)
+            }
+            .font(MacRowFont.meta).foregroundStyle(CarryOnColorStyle.coTextSecondary)
+            .fixedSize(horizontal: false, vertical: true).accessibilityElement(children: .combine)
+            Text(verbatim: task.title).font(MacRowFont.action(size: 20, weight: 600, relativeTo: .title2))
+                .foregroundStyle(CarryOnColorStyle.coTextPrimary).fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 6).accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    private func block(for run: AgentRunDTO) -> AgentRunBlock {
+        AgentRunBlock(run, now: section.now(), relay: model.agentAvailability.relayEnabled && onHandOff != nil)
+    }
+
+    private func load() async {
+        loading = true
+        await section.load()
+        loading = false
     }
 
     /// Return on a run row asked for focus here (030-FR-040); the label is the first stop of the section.
@@ -84,53 +129,77 @@ struct AgentRunSectionView: View {
 
     @ViewBuilder
     private func runContent(_ run: AgentRunDTO, _ block: AgentRunBlock) -> some View {
-        MacInspectorSectionLabel(run.agentName)
-        Text(verbatim: block.label)
-            .font(MacRowFont.titleStrong).foregroundStyle(block.color)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel(block.label)
-            .focusable()
-            .focused($runFocused)
-        if block.isExpired { EmptyView() } else { details(run, block) }
-    }
-
-    @ViewBuilder
-    private func details(_ run: AgentRunDTO, _ block: AgentRunBlock) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(AgentTimelineRow.rows(run).enumerated()), id: \.offset) { _, row in
-                HStack(spacing: 6) {
-                    Text(verbatim: row.word).font(MacRowFont.sectionHeader).foregroundStyle(CarryOnColorStyle.coTextPrimary)
-                    Text(verbatim: row.meta).font(MacRowFont.meta).foregroundStyle(CarryOnColorStyle.coTextSecondary)
+        Group {
+            if block.showsResult || block.isExpired {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Circle().fill(CarryOnColorStyle.coMarkOpen).frame(width: 7, height: 7)
+                    Text(verbatim: block.label).font(MacRowFont.meta).foregroundStyle(block.color)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .padding(.top, 14)
+            } else {
+                timeline(run, block)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
-        if !online || model.agentRuns.phase == .stale, let at = model.agentRuns.lastUpdated ?? run.lastContactAt {
-            MacInspectorMetaText(text: AgentsCopy.lastUpdated(at.formatted(date: .omitted, time: .shortened)))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel(block.label).focusable().focused($runFocused)
+        if !block.isExpired {
+            if !online || model.agentRuns.phase == .stale, let at = model.agentRuns.lastUpdated ?? run.lastContactAt {
+                MacInspectorMetaText(text: AgentsCopy.lastUpdated(at.formatted(date: .omitted, time: .shortened)))
+            }
+            stateBlock(run, block)
         }
-        stateBlock(run, block)
+    }
+
+    private func timeline(_ run: AgentRunDTO, _ block: AgentRunBlock) -> some View {
+        var rows = AgentTimelineRow.rows(run).map { (word: $0.word, meta: $0.meta) }
+        if rows.last?.word != run.primaryState.label {
+            rows.append((block.label, run.lastContactAt?.formatted(date: .omitted, time: .shortened) ?? ""))
+        } else {
+            rows[rows.count - 1].word = block.label
+        }
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                let last = index == rows.count - 1
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(spacing: 3) {
+                        Circle().fill(last && block.tone != .plain ? block.color : .coMarkOpen).frame(width: 10, height: 10)
+                        if !last { Rectangle().fill(CarryOnColorStyle.coMarkOpen.opacity(0.4)).frame(width: 1.5, height: 22) }
+                    }
+                    .frame(width: 10).padding(.top, 4).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: row.word).font(last ? MacRowFont.titleStrong : MacRowFont.title)
+                            .foregroundStyle(CarryOnColorStyle.coTextPrimary)
+                        Text(verbatim: row.meta).font(MacRowFont.meta).foregroundStyle(CarryOnColorStyle.coTextSecondary)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, minHeight: last ? 0 : 43, alignment: .topLeading)
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(.top, 18).padding(.bottom, 4)
     }
 
     @ViewBuilder
     private func stateBlock(_ run: AgentRunDTO, _ block: AgentRunBlock) -> some View {
         if let question = block.question {
             card(AgentsCopy.asks(run.agentName), question)
-            if block.reply { replyForm(run, block) }
+            if block.reply { replyForm(run) }
         }
         if let detail = block.detail { plain(detail, block.color) }
         if let contact = block.contact { MacInspectorMetaText(text: contact) }
         if block.showsResult { resultBlock(block) }
         if block.check { checkForm }
-        if (block.stop && !block.reply) || (block.handOffAgain && !block.markDone) { buttonRow(block) }
         if (block.reply || block.stop || block.check) && !online { MacInspectorMetaText(text: AgentsCopy.needsConnection) }
         if case .failed(let failure) = section.actions.phase {
             plain([failure.text(), failure.reference].compactMap { $0 }.joined(separator: " "), .coStatusDanger)
         }
     }
 
-    private func plain(_ text: String, _ color: CarryOnColorStyle) -> some View {
+    private func plain(_ text: String, _ color: CarryOnColorStyle, topPadding: CGFloat = 8) -> some View {
         Text(verbatim: text).font(MacRowFont.action(size: 14, weight: 400, relativeTo: .body)).foregroundStyle(color)
-            .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+            .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading).padding(.top, topPadding)
     }
 
     private func card(_ title: String, _ text: String) -> some View {
@@ -139,36 +208,31 @@ struct AgentRunSectionView: View {
             Text(verbatim: text).font(MacRowFont.action(size: 14, weight: 400, relativeTo: .body)).foregroundStyle(CarryOnColorStyle.coTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-        .background(CarryOnColorStyle.coSurfaceCard, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(CarryOnColorStyle.coBgGround, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .padding(.top, 8).accessibilityElement(children: .combine)
     }
 
     private func field(_ name: String, text: Binding<String>, secure: Bool = false) -> some View {
         Group {
-            if secure { SecureField(name, text: text) } else { TextField(name, text: text, axis: .vertical).lineLimit(2...5) }
+            if secure { SecureField(name, text: text) } else { TextField(name, text: text, axis: .vertical).lineLimit(1...5) }
         }
         .textFieldStyle(.plain).font(MacRowFont.title).foregroundStyle(CarryOnColorStyle.coTextPrimary)
         .padding(.horizontal, 10).padding(.vertical, 7)
-        .background(CarryOnColorStyle.coFieldBg, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .focused($editorFocused, equals: name)
+        .background(CarryOnColorStyle.coSurfaceCard, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(editorFocused == name ? CarryOnColorStyle.coTextPrimary : .coMarkOpen,
+                              lineWidth: editorFocused == name ? 2 : 1)
+        }
         .padding(.top, 8).accessibilityLabel(name)
     }
 
-    private func replyForm(_ run: AgentRunDTO, _ block: AgentRunBlock) -> some View {
+    private func replyForm(_ run: AgentRunDTO) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             field(AgentsCopy.yourAnswer, text: $section.answer)
             if run.replyPending { MacInspectorMetaText(text: AgentsCopy.replySent) }
-            HStack(spacing: 8) {
-                Button(AgentsCopy.reply) { Task { await section.sendReply() } }
-                    .buttonStyle(.carryOnPrimary)
-                    .disabled(!online || run.replyPending || section.actions.phase == .working
-                        || section.answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                if block.stop {
-                    Button(AgentsCopy.stopRun) { Task { if let run = section.shown { await section.actions.stop(run) } } }
-                        .buttonStyle(.carryOnSecondary).disabled(!online || section.actions.phase == .working)
-                }
-            }
-            .padding(.top, 8)
         }
     }
 
@@ -180,32 +244,59 @@ struct AgentRunSectionView: View {
             .disabled(!online || section.actions.phase == .working || (section.asksPassword && section.password.isEmpty))
     }
 
-    /// Stop run where the question is not shown (running, queued, stopped reporting), and Hand off again where offered.
-    private func buttonRow(_ block: AgentRunBlock) -> some View {
-        HStack(spacing: 8) {
-            if block.stop && !block.reply {
-                Button(AgentsCopy.stopRun) { Task { if let run = section.shown { await section.actions.stop(run) } } }
-                    .buttonStyle(.carryOnSecondary).disabled(!online || section.actions.phase == .working)
-            }
-            if block.handOffAgain, let onHandOff { Button(AgentsCopy.handOffAgain, action: onHandOff).buttonStyle(.carryOnSecondary) }
-        }
-        .padding(.top, 8)
-    }
-
     @ViewBuilder
     private func resultBlock(_ block: AgentRunBlock) -> some View {
         MacInspectorSectionLabel(AgentsCopy.result)
-        if let result = block.result { plain(result, .coTextPrimary) }
-        if let link = block.resultLink { plain(link, .coTextSecondary) }
+        VStack(alignment: .leading, spacing: 8) {
+            if let result = block.result { plain(result, .coTextPrimary, topPadding: 0) }
+            if let link = block.resultLink {
+                Text(verbatim: link).font(MacRowFont.meta).foregroundStyle(CarryOnColorStyle.coTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8).background(CarryOnColorStyle.coControlQuiet, in: RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(CarryOnColorStyle.coBgGround, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         MacInspectorMetaText(text: AgentsCopy.finishingIsYours)
         MacInspectorSectionLabel(AgentsCopy.then)
-        field(AgentsCopy.makeNextStep, text: $section.nextStep)
-        HStack(spacing: 8) {
-            Button(AgentsCopy.markDone) { Task { await section.actions.markStepDone(taskServerID: section.taskServerID, projectID: section.projectID, nextStep: section.nextStep) } }
-                .buttonStyle(.carryOnPrimary).disabled(section.actions.phase == .working)
-            if block.handOffAgain, let onHandOff { Button(AgentsCopy.handOffAgain, action: onHandOff).buttonStyle(.carryOnSecondary) }
+        HStack(spacing: 10) {
+            MacBoardIconView(icon: .nextActions, size: 18).foregroundStyle(CarryOnColorStyle.coTextPrimary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: AgentsCopy.makeNextStep).font(MacRowFont.title).foregroundStyle(CarryOnColorStyle.coTextPrimary)
+                TextField(AgentsCopy.makeNextStep, text: $section.nextStep, axis: .vertical).textFieldStyle(.plain)
+                    .font(MacRowFont.meta).foregroundStyle(CarryOnColorStyle.coTextSecondary)
+                    .accessibilityLabel(AgentsCopy.makeNextStep)
+            }
         }
-        .padding(.top, 8)
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(CarryOnColorStyle.coBgGround, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var footer: some View {
+        if let run = section.shown {
+            let block = block(for: run)
+            HStack(spacing: 8) {
+                if block.reply {
+                    Button(AgentsCopy.reply) { Task { await section.sendReply() } }
+                        .buttonStyle(.carryOnPrimary)
+                        .disabled(!online || run.replyPending || section.actions.phase == .working
+                            || section.answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                if block.stop {
+                    Button(AgentsCopy.stopRun) { Task { await section.actions.stop(run) } }
+                        .buttonStyle(.carryOnQuiet).disabled(!online || section.actions.phase == .working)
+                }
+                if block.markDone {
+                    Button(AgentsCopy.markDone) { Task { await section.actions.markStepDone(taskServerID: section.taskServerID, projectID: section.projectID, nextStep: section.nextStep) } }
+                        .buttonStyle(.carryOnPrimary).disabled(section.actions.phase == .working)
+                }
+                if block.handOffAgain, let onHandOff {
+                    Button(AgentsCopy.handOffAgain, action: onHandOff).buttonStyle(.carryOnQuiet)
+                }
+                Spacer(minLength: 0)
+            }
+        }
     }
 
     @ViewBuilder

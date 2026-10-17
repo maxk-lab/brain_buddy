@@ -97,6 +97,9 @@ private enum PendingEditorNavigation {
     case reopen(TaskID)
     case cancel(TaskID)
     case newTask
+    case handOff(TaskID)
+    case notNow(TaskID)
+    case inspectorAction(TaskID, TaskInspectorRequest)
     case reload
     case clearTaskFilters
     case createTask
@@ -138,14 +141,15 @@ private struct PresentedSection: Identifiable {
 }
 
 func tagTint(_ id: TagID) -> Color {
-    let palette: [Color] = [.purple, .teal, .green, .orange, .pink]
+    let palette = [CarryOnProjectColor.plum, CarryOnProjectColor.lake, CarryOnProjectColor.moss,
+                    CarryOnProjectColor.ochre, CarryOnProjectColor.rosewood].map { Color($0) }
     let hash = id.rawValue.utf8.reduce(UInt(0)) { ($0 &* 31) &+ UInt($1) }
     return palette[Int(hash % UInt(palette.count))]
 }
 
 func projectTint(_ hex: String?) -> Color {
     guard let hex, hex.hasPrefix("#"), hex.count == 7, let value = UInt32(hex.dropFirst(), radix: 16) else {
-        return .accentColor
+        return Color(CarryOnProjectColor.dust)
     }
     return Color(
         .sRGB, red: Double((value >> 16) & 0xff) / 255, green: Double((value >> 8) & 0xff) / 255,
@@ -232,6 +236,8 @@ struct WorkspaceView: View {
     @State private var confirmingDiscard = false
     @State private var pendingVoiceTranscript: String?
     @State private var confirmingReplaceDraft = false
+    @State private var capturePresented = false
+    @State private var captureAfterVoice = false
     @State private var choosingCaptureList = false
     @State private var focusCaptureAfterChoice = false
     @State private var captureListChoice: TaskList = .next
@@ -254,6 +260,7 @@ struct WorkspaceView: View {
     @State private var reviewingProjects = false
     @State private var clarifyingInbox = false
     @State private var quickOpenPresented = false
+    @State private var searchPresented = false
     @State private var pendingQuickOpenTarget: QuickOpenTarget?
     @State private var quickOpenedTaskID: TaskID?
     @State private var renamingTask: TaskRecord?
@@ -261,6 +268,8 @@ struct WorkspaceView: View {
     @State private var quickRenameError: String?
     @State private var capturingFirstItem = false
     @State private var handingOff: TaskRecord?
+    @State private var notNowTask: TaskRecord?
+    @State private var inspectorRequest: TaskInspectorRequest?
     @State private var agentList: AgentSettingsModel?
     @FocusState private var addFocused: Bool
     @FocusState private var quickRenameFocused: Bool
@@ -271,6 +280,7 @@ struct WorkspaceView: View {
         reviewSheets(collectionSheets(taskSheets(window)))
             .focusedSceneValue(\.closeTaskDetails, closeTaskDetailsAction)
             .focusedSceneValue(\.handOffSelectedStep, handOffMenuAction)
+            .focusedSceneValue(\.workspaceCommands, workspaceCommands)
     }
 
     private var sheetIsBusy: Bool { model.isSaving || isSubmittingSheet }
@@ -288,17 +298,30 @@ struct WorkspaceView: View {
     private var window: some View {
         NavigationSplitView(columnVisibility: $columns) {
             sidebar
-                .navigationSplitViewColumnWidth(min: 310, ideal: 340, max: 400)
+                .toolbar(removing: .sidebarToggle)
+                .navigationSplitViewColumnWidth(
+                    min: CarryOnLayout.MacWindow.sidebarColumnWidth,
+                    ideal: CarryOnLayout.MacWindow.sidebarColumnWidth, max: 400)
         } detail: {
-            detailCanvas
-                .inspector(isPresented: inspectorPresented) {
+            HStack(spacing: 0) {
+                detailCanvas
+                    .frame(minWidth: MacWindowGeometry.canvasMinimumWidth, maxWidth: .infinity)
+                if inspectorPresented.wrappedValue {
                     inspectorContent
-                        .inspectorColumnWidth(min: inspectorWidth, ideal: inspectorWidth, max: inspectorWidth)
+                        .disabled(sheetIsBusy)
+                        .ignoresSafeArea(.container, edges: .top)
+                        .frame(width: inspectorWidth)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("workspace-inspector")
                 }
+            }
+            .navigationSplitViewColumnWidth(min: detailMinimumWidth,
+                ideal: detailMinimumWidth, max: .infinity)
         }
         .toolbar { toolbarContent }
-        .searchable(text: $model.searchText, placement: .toolbar, prompt: "Search tasks")
-        .onSubmit(of: .search) { requestNavigation(.reload) }
+        .toolbar(removing: .title)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .toolbarVisibility(.visible, for: .windowToolbar)
         .onChange(of: model.searchText) { _, value in
             if value.isEmpty { requestNavigation(.reload) }
         }
@@ -312,7 +335,7 @@ struct WorkspaceView: View {
             canvasFocus = .retry
             AccessibilityNotification.Announcement(message).post()
         }
-        .disabled(sheetIsBusy)
+        .disabled(isSubmittingSheet)
         // presentation-region-end
         // X-03 and X-04, attached through the router; "Sign out…" runs the unsaved-edit guard first.
         .routedSignInSheet(sync.router, onDismiss: { sync.closeSignIn() }) { _ in
@@ -375,6 +398,13 @@ struct WorkspaceView: View {
         model.agentRuns.requestInspectorFocus()
     }
 
+    private var showsCaptureToolbar: Bool {
+        switch firstRun.phase {
+        case .welcome, .firstStep: false
+        default: true
+        }
+    }
+
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         // X-01 "sidebar hidden": in attention states only, the line's words and glyph; nothing
@@ -382,65 +412,100 @@ struct WorkspaceView: View {
         ToolbarItem(placement: .navigation) {
             SyncToolbarStatusItem(controller: sync, sidebarHidden: columns == .detailOnly)
         }
-        ToolbarItem(placement: .primaryAction) {
-            if model.destination.isAgentRuns, model.canAddAgent {
-                Button {
-                    model.agentAvailability.requestAddAgent()
-                    openSettings()
-                } label: {
-                    Label { Text(AgentsCopy.addNewAgent) } icon: { MacBoardIconView(icon: .plus, size: 15) }
+        ToolbarSpacer(.flexible, placement: .primaryAction)
+        if showsCaptureToolbar {
+            ToolbarItem(placement: .primaryAction) {
+                MacWindowToolbarButton(command: .newStep) { requestNavigation(.newTask) }
+            }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarItem(placement: .primaryAction) {
+                MacWindowToolbarButton(command: .voice) { voicePresented = true }
+            }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarItem(placement: .primaryAction) {
+                MacWindowToolbarButton(command: .quickOpen) { quickOpenPresented = true }
+            }
+            .sharedBackgroundVisibility(.hidden)
+            if inspectorPresented.wrappedValue {
+                ToolbarItem(placement: .primaryAction) {
+                    Color.clear.frame(width: inspectorWidth, height: 1).accessibilityHidden(true)
                 }
-            }
-        }
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                requestNavigation(.newTask)
-            } label: {
-                Label("New task", systemImage: "plus")
-            }
-            .keyboardShortcut("n", modifiers: [.command])
-            Button {
-                quickOpenPresented = true
-            } label: {
-                Label("Quick Open", systemImage: "magnifyingglass.circle")
-            }
-            .keyboardShortcut("o", modifiers: [.command])
-            Button {
-                quickCapture.show()
-            } label: {
-                Label("Quick Capture", systemImage: "square.and.pencil")
-            }
-            .keyboardShortcut("b", modifiers: [.control, .option, .shift])
-            .help("Capture to Inbox from anywhere with ⌃⌥⇧B")
-            Button {
-                voicePresented = true
-            } label: {
-                Label("Voice to task draft", systemImage: "mic")
+                .sharedBackgroundVisibility(.hidden)
             }
         }
     }
 
+    private var workspaceCommands: WorkspaceCommandsAction? {
+        guard !sheetIsBusy, addingCollection == nil else { return nil }
+        return WorkspaceCommandsAction(
+            newStep: { requestNavigation(.newTask) }, quickOpen: { quickOpenPresented = true },
+            quickCapture: { quickCapture.show() }, voice: { voicePresented = true },
+            search: { searchPresented = true },
+            newTag: { beginCollection(.tag) },
+            newProject: { beginCollection(.project) },
+            reviewProjects: { requestNavigation(.reviewProjects) })
+    }
+
+    private func beginCollection(_ kind: NewCollection) {
+        WorkspaceCommandsAction.beginCollection(
+            kind, presented: &addingCollection, name: &collectionName, isBusy: sheetIsBusy)
+    }
+
+    /// Full task filtering remains distinct from Quick Open; submission still uses the editor guard.
+    private var taskSearch: some View {
+        VStack(alignment: .leading, spacing: CarryOnSpace.md) {
+            Text("Search tasks").carryOnText(CarryOnTypeScale.title)
+            TextField("Search tasks", text: $model.searchText)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(submitTaskSearch)
+                .accessibilityLabel("Search tasks")
+            HStack {
+                Button("Cancel") { searchPresented = false }.keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("Clear search") {
+                    requestNavigation(.clearTaskFilters)
+                    searchPresented = false
+                }
+                Button("Search", action: submitTaskSearch).keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(CarryOnSpace.lg)
+        .frame(minWidth: CarryOnLayout.MacWindow.sidebarColumnWidth * 2)
+    }
+
+    private func submitTaskSearch() {
+        requestNavigation(.reload)
+        searchPresented = false
+    }
+
     // MARK: Sidebar
 
-    private var sidebar: some View {
+    var sidebar: some View {
         List(selection: sidebarSelection) {
             MacSidebarBrand()
+                .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .selectionDisabled()
-            ForEach(fixedSidebarSections) { section in
+            ForEach(fixedSidebarSections.filter { $0.id != "history" }) { section in
                 if section.id == "dates", !firstRun.showsFirstRunSidebar { agentsSection }
                 sidebarSection(section)
             }
             if !firstRun.showsFirstRunSidebar {
                 projectsSection
                 archivedProjectsSection
-                tagsSection
+                ForEach(fixedSidebarSections.filter { $0.id == "history" }) { sidebarSection($0) }
+                if !model.tags.isEmpty || model.tagsReadiness != .ready { tagsSection }
             }
         }
-        .listStyle(.sidebar)
-        .navigationTitle("BrainBuddy")
-        .safeAreaInset(edge: .bottom) { footer }
+        .listStyle(.plain)
+        .listRowSeparator(.hidden)
+        .scrollContentBackground(.hidden)
+        .contentMargins(.top, 0, for: .scrollContent)
+        .environment(\.defaultMinListRowHeight, CarryOnLayout.MacWindow.sidebarRowHeight)
+        .background(MacSidebarSelectionStyle())
+        .safeAreaInset(edge: .bottom) { footer.background(MacBoardSurface.sidebar) }
+        .background(MacBoardSurface.sidebar)
     }
 
     /// Arrow keys move the List selection; choosing a row opens its destination (030-FR-040).
@@ -457,7 +522,8 @@ struct WorkspaceView: View {
             let runs = model.listedRuns
             let rows = AgentSidebarRow.rows(
                 runs: runs, counts: model.agentRuns.perAgentCounts, connections: agentList?.rows ?? [])
-            Section {
+            Group {
+                sidebarHeader(AgentsCopy.sidebar)
                 sidebarButton(
                     AgentsCopy.allRuns, symbol: "", destination: .agentRuns(.all), trailing: runs.isEmpty ? nil : "\(runs.count)")
                 ForEach(rows) { row in
@@ -465,7 +531,7 @@ struct WorkspaceView: View {
                         row.name, symbol: "", destination: .agentRuns(.agent(row.id)), trailing: row.trailing,
                         attention: row.needsYou)
                 }
-            } header: { MacSidebarSectionHeader(title: AgentsCopy.sidebar) }
+            }
             .task(id: model.workspace.account?.id) { await loadAgentList() }
         }
     }
@@ -481,12 +547,13 @@ struct WorkspaceView: View {
 
     /// F-04: Lists and Dates only while the first run shows.
     private var fixedSidebarSections: [SidebarSection] {
-        let all = SidebarEntries.standard.sections
+        let all = SidebarEntries.standard.sections.filter { $0.id != SidebarEntries.weeklyReviewRowID }
         return firstRun.showsFirstRunSidebar ? all.filter { $0.header == "Lists" || $0.header == "Dates" } : all
     }
 
     private var projectsSection: some View {
-        Section {
+        Group {
+            sidebarHeader("Projects")
             if model.projectsReadiness == .ready {
             ForEach(model.projects) { project in
                 sidebarButton(
@@ -503,20 +570,6 @@ struct WorkspaceView: View {
             } else {
                 querySidebarStatus(model.projectsReadiness)
             }
-        } header: {
-            MacSidebarSectionHeader(title: "Projects") {
-                Button("Review") { requestNavigation(.reviewProjects) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Review projects")
-                Button {
-                    collectionName = ""
-                    addingCollection = .project
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add project")
-            }
         }
     }
 
@@ -526,14 +579,13 @@ struct WorkspaceView: View {
     private var archivedProjectsSection: some View {
         let archived = model.archivedProjects
         if model.archivedProjectsReadiness != .ready {
-            Section {
+            Group {
+                sidebarHeader("Archived projects")
                 querySidebarStatus(model.archivedProjectsReadiness)
-            } header: {
-                MacSidebarSectionHeader(title: "Archived projects")
             }
         } else if !archived.isEmpty {
             let expanded = model.localState.sidebar.archivedProjectsExpanded
-            Section {
+            Group {
                 Button {
                     model.setArchivedProjectsExpanded(!expanded)
                 } label: {
@@ -568,7 +620,8 @@ struct WorkspaceView: View {
     }
 
     private var tagsSection: some View {
-        Section {
+        Group {
+            sidebarHeader("Tags")
             if model.tagsReadiness == .ready {
             ForEach(model.tags) { tag in
                 Button {
@@ -583,6 +636,7 @@ struct WorkspaceView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
+                .listRowSeparator(.hidden)
                 .listRowBackground(tagRowBackground(tag.id))
                 .contextMenu {
                     Button("Rename…") { beginRename(.tag(tag.id), name: tag.name) }
@@ -598,8 +652,7 @@ struct WorkspaceView: View {
                 querySidebarStatus(model.tagsReadiness)
             }
             Button {
-                collectionName = ""
-                addingCollection = .tag
+                beginCollection(.tag)
             } label: {
                 Label("New tag", systemImage: "plus")
                     .font(.caption)
@@ -608,8 +661,6 @@ struct WorkspaceView: View {
                     .background(.quaternary, in: Capsule())
             }
             .buttonStyle(.plain)
-        } header: {
-            MacSidebarSectionHeader(title: "Tags")
         }
     }
 
@@ -684,16 +735,18 @@ struct WorkspaceView: View {
         SyncStatusLine(controller: sync)
     }
 
-    @ViewBuilder
+    private func sidebarHeader(_ title: String) -> some View {
+        MacSidebarSectionHeader(title: title)
+            .listRowSeparator(.hidden)
+            .accessibilityAddTraits(.isHeader)
+            .listRowInsets(EdgeInsets())
+            .selectionDisabled()
+    }
+
     private func sidebarSection(_ section: SidebarSection) -> some View {
-        if let header = section.header {
-            Section {
-                sidebarRows(section.rows)
-            } header: {
-                MacSidebarSectionHeader(title: header)
-            }
-        } else {
-            Section { sidebarRows(section.rows) }
+        Group {
+            if let header = section.header { sidebarHeader(header) }
+            sidebarRows(section.rows)
         }
     }
 
@@ -701,7 +754,9 @@ struct WorkspaceView: View {
         ForEach(rows) { row in
             switch row.kind {
             case .destination(let destination):
-                sidebarButton(row.title, symbol: row.symbol, destination: destination)
+                sidebarButton(
+                    destination == .list(.someday) ? "Someday / maybe" : destination == .history(.completed) ? "Done" : row.title,
+                    symbol: row.symbol, destination: destination)
             case .deferred(let note):
                 deferredSidebarRow(row, note: note)
             }
@@ -720,6 +775,7 @@ struct WorkspaceView: View {
         .accessibilityAddTraits(.isStaticText)
         .listRowBackground(Color.clear)
         .selectionDisabled()
+        .listRowInsets(EdgeInsets())
     }
 
     /// A project's colour dot, else the board's own icon for a fixed destination, else the SF Symbol.
@@ -749,7 +805,9 @@ struct WorkspaceView: View {
         }
         .accessibilityLabel(count.map { "\(title), \($0) open tasks" } ?? (attention ? "\(title), needs you" : title))
         .buttonStyle(.plain)
+        .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets())
         .tag(destination)
     }
 
@@ -824,24 +882,27 @@ struct WorkspaceView: View {
     /// edits save first ("Saved as you type"); only what cannot save — fields that are not valid or a
     /// save that failed, a subtask or comment not added yet, the capture draft — asks first.
     private func requestNavigation(_ next: PendingEditorNavigation) {
+        // Keep save-time navigation blocked without dimming the entire window.
+        guard !sheetIsBusy else { return }
         guard selectedTaskID != nil, taskForm?.isDirty == true || autosaveRun != nil else {
             confirmOrApply(next)
             return
         }
         Task {
-            if await saveTaskEdits() {
-                confirmOrApply(next)
-            } else {
-                pendingEditorNavigation = next
-                confirmingDiscard = true
+            while taskForm?.isDirty == true || autosaveRun != nil {
+                guard await saveTaskEdits() else {
+                    pendingEditorNavigation = next
+                    confirmingDiscard = true
+                    return
+                }
             }
+            confirmOrApply(next)
         }
     }
 
     private func confirmOrApply(_ next: PendingEditorNavigation) {
         let hasUnaddedExtras = selectedTaskID != nil && extrasDirty
-        let hasCaptureDraft = !model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || !model.waitingForDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasCaptureDraft = !model.captureDraft.isBlank
         if hasUnaddedExtras || (hasCaptureDraft && changesCaptureContext(next)) {
             pendingEditorNavigation = next
             confirmingDiscard = true
@@ -1059,18 +1120,25 @@ struct WorkspaceView: View {
                     release(id)
                 }
             }
+        case .handOff(let id):
+            handingOff = model.task(id)
+        case .notNow(let id):
+            notNowTask = model.task(id)
+        case .inspectorAction(let id, let action):
+            select(id)
+            inspectorRequest = action
         case .newTask:
             select(nil)
             // presentation-region: new task focus
             if model.isArchivedProjectDestination {
                 model.choose(.list(.next))
-                addFocused = true
+                capturePresented = true
             } else if isDateDestination || model.destination.isHistory {
                 addFocused = false
                 captureListChoice = .next
                 choosingCaptureList = true
             } else {
-                addFocused = true
+                capturePresented = true
             }
             // presentation-region-end
         case .reload:
@@ -1081,7 +1149,10 @@ struct WorkspaceView: View {
             model.clearTaskFilters()
         case .createTask:
             select(nil)
-            Task { await model.createTask() }
+            Task {
+                await model.createTask()
+                if model.captureDraft.isBlank { capturePresented = false }
+            }
         case .reviewWaiting:
             select(nil)
             reviewingWaiting = true
@@ -1141,6 +1212,11 @@ struct WorkspaceView: View {
 
     // MARK: The list
 
+    private var isProjectDestination: Bool {
+        if case .project = model.destination { return true }
+        return false
+    }
+
     private var isDateDestination: Bool {
         if case .date = model.destination { return true }
         return false
@@ -1161,7 +1237,7 @@ struct WorkspaceView: View {
                 ? ListPresentationHold.order(onScreen: shownOrders[section.id] ?? [], incoming: incoming, held: held)
                 : incoming
             let byID = Dictionary(section.tasks.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-            let rows = order.compactMap { byID[$0] ?? model.task($0) }
+            let rows = order.compactMap { model.task($0) ?? byID[$0] }
             let departed = Set(order.filter { byID[$0] == nil })
             return PresentedSection(id: section.id, title: sectionTitle(section), kind: section.kind, rows: rows, departed: departed)
         }
@@ -1203,7 +1279,7 @@ struct WorkspaceView: View {
                 errorText: model.error, onSubmit: submitFirstCapture, onSkip: { firstRun.skip() },
                 onMic: { voicePresented = true }
             )
-            .frame(minWidth: 560, minHeight: 480)
+            .frame(minWidth: MacWindowGeometry.canvasMinimumWidth, minHeight: 480)
             .background(.coBgGround)
         } else {
             routedCanvas
@@ -1238,10 +1314,9 @@ struct WorkspaceView: View {
     @ViewBuilder
     private var landing: some View {
         if showsLanding {
-            let step = model.tasks.first { $0.state == .next }
             LandingTip(
-                step: step?.title, tip: firstRun.landingTip,
-                onOpenStep: { if let step { requestNavigation(.task(step.id)) } },
+                step: nil, tip: firstRun.landingTip,
+                onOpenStep: {},
                 onDismiss: { firstRun.dismissTip() }
             )
             .padding(.horizontal, 28)
@@ -1249,21 +1324,23 @@ struct WorkspaceView: View {
         }
     }
 
-    private var taskCanvas: some View {
+    var taskCanvas: some View {
         let sections = showsLanding ? [] : presentedSections(model.sections)
         let orders = Dictionary(sections.map { ($0.id, $0.rows.map(\.id)) }, uniquingKeysWith: { first, _ in first })
         let onScreen = sections.flatMap { $0.rows.map(\.id) }
         return VStack(alignment: .leading, spacing: 0) {
             canvasHeader
             canvasMessages
+            if let step = nowStep {
+                nowCard(step).padding(.horizontal, 28).padding(.bottom, 16)
+            }
             landing
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         canvasRows(sections, onScreen: onScreen)
                     }
-                    .frame(maxWidth: 860)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 28)
                     .padding(.bottom, 28)
                 }
@@ -1304,7 +1381,7 @@ struct WorkspaceView: View {
                 .padding(.vertical, 8)
             }
         }
-        .frame(minWidth: 560, minHeight: 480)
+        .frame(minWidth: MacWindowGeometry.canvasMinimumWidth, minHeight: 480)
         .background(.coBgGround)
         .onChange(of: orders, initial: true) { _, new in shownOrders = new }
         .onChange(of: onScreen) { _, ids in keepSelection(in: ids) }
@@ -1324,13 +1401,19 @@ struct WorkspaceView: View {
     /// Open while a task is selected; closing it (⌘\, Esc, the column) is choosing no task.
     private var inspectorPresented: Binding<Bool> {
         Binding(
-            get: { selectedTaskID != nil },
+            get: { selectedTaskID != nil || (model.destination == .list(.inbox) && firstRun.phase != .welcome) },
             set: { shown in if !shown { requestNavigation(.task(nil)) } }
         )
     }
 
+    private var detailMinimumWidth: CGFloat {
+        MacWindowGeometry.canvasMinimumWidth + (inspectorPresented.wrappedValue ? inspectorWidth : 0)
+    }
+
     private var inspectorWidth: CGFloat {
-        TaskInspector.width(for: selectedTaskID.flatMap { model.task($0) }?.state ?? .next)
+        let task = selectedTaskID.flatMap { model.task($0) }
+        if let task, hasAgentRunSection(task) { return 380 }
+        return TaskInspector.width(for: task?.state ?? .next)
     }
 
     @ViewBuilder
@@ -1356,20 +1439,27 @@ struct WorkspaceView: View {
                 onExtrasDirtyChange: { extrasDirty = $0 },
                 runSection: agentRunSection(for: task),
                 handOff: handOffControl(for: task),
-                onHandOff: { handingOff = task }
+                onHandOff: { requestNavigation(.handOff(task.id)) },
+                requestedAction: $inspectorRequest
             )
             .id(task.id)
         } else {
             MacInspectorPanel {
-                MacInspectorEmpty(text: "Select something to sort it.")
+                MacInspectorEmpty(text: "Select something to sort it.\nOr press Sort them one by one.")
             }
         }
     }
 
-    /// G-05 under the fields of a step that has a listed run (030-FR-019); nil otherwise.
+    /// Shared pure eligibility for the full run panel and the outer inspector geometry.
+    private func hasAgentRunSection(_ task: TaskRecord) -> Bool {
+        guard model.workspace.account != nil, let server = task.serverID else { return false }
+        return model.listedRuns.contains(where: { $0.taskServerID == server })
+    }
+
+    /// G-05 replaces the ordinary fields for a step with a listed run (030-FR-019).
     private func agentRunSection(for task: TaskRecord) -> AnyView? {
-        guard let server = task.serverID, model.listedRuns.contains(where: { $0.taskServerID == server }) else { return nil }
-        return AgentRunSectionView(model: model, task: task, onHandOff: { handingOff = task }).map { AnyView($0.id(task.id)) }
+        guard hasAgentRunSection(task) else { return nil }
+        return AgentRunSectionView(model: model, task: task, onHandOff: { requestNavigation(.handOff(task.id)) }).map { AnyView($0.id(task.id)) }
     }
 
     private func handOffControl(for task: TaskRecord) -> HandOffControl {
@@ -1381,13 +1471,13 @@ struct WorkspaceView: View {
         guard handingOff == nil, let id = selectedTaskID, let task = model.task(id),
             HandOffControl.menuEnabled(control: handOffControl(for: task), variant: TaskInspectorVariant(state: task.state))
         else { return nil }
-        return HandOffSelectedStepAction(open: { handingOff = task })
+        return HandOffSelectedStepAction(open: { requestNavigation(.handOff(task.id)) })
     }
 
     /// G-04, attached beside the other task sheets (030-FR-013).
     @ViewBuilder
     private func handOffSheet(_ task: TaskRecord) -> some View {
-        if let sheet = HandoffSheet(model: model, task: task, onClose: { handingOff = nil }) { sheet }
+        if let sheet = HandoffSheet(model: model, task: model.task(task.id) ?? task, onClose: { handingOff = nil }) { sheet }
     }
 
     /// The Inbox items on screen, in order.
@@ -1456,10 +1546,6 @@ struct WorkspaceView: View {
             return nil
         }()
         let currentStepID = overview?.nextAction?.id
-        if let overview {
-            projectOverviewCard(overview)
-                .padding(.bottom, 16)
-        }
         if model.destination == .list(.waiting), !model.listedRuns.isEmpty {
             // G-03: runs above the list's own rows, which become the People group; no step moves.
             sectionHeader(AgentsCopy.waitingAgents, top: 0)
@@ -1475,23 +1561,33 @@ struct WorkspaceView: View {
             sectionHeader("Opened from Quick Open", top: 0)
             taskCard(task)
         }
-        ForEach(sections.filter { !$0.isTerminal }) { section in
-            if let title = section.title {
+        ForEach(sections.filter { section in
+            !section.isTerminal && section.rows.contains(where: { $0.id != nowStep?.id })
+        }) { section in
+            if let title = section.title, !isProjectDestination {
                 sectionHeader(title, top: 8)
             }
-            ForEach(section.rows) { task in
+            ForEach(section.rows.filter { $0.id != nowStep?.id }) { task in
                 taskCard(
                     task, departed: section.departed.contains(task.id), inProjectGroup: isProjectGroup(section.kind),
                     currentStepID: currentStepID)
             }
         }
-        if !isDateDestination && !model.destination.isHistory && !model.isArchivedProjectDestination {
-            smartAdd
-                .padding(.top, 12)
+        if model.destination == .list(.inbox), !firstRun.showsFirstRunSidebar, !onScreen.isEmpty {
+            Button("Sort them one by one") { requestNavigation(.clarifyInbox) }
+                .buttonStyle(.carryOnSecondary)
+                .padding(.top, 16)
         }
         ForEach(sections.filter(\.isTerminal)) { section in
             if let title = section.title {
-                sectionHeader(title, top: 16)
+                if case .project = model.destination, section.kind == .completed {
+                    Text("What is done stays done.")
+                        .font(.custom(CarryOnFontFace.voice.postScriptName(weight: 400), size: 22))
+                        .foregroundStyle(.coTextSecondary)
+                        .padding(.top, 22).padding(.bottom, 8).padding(.horizontal, 12)
+                } else {
+                    sectionHeader(title, top: 16)
+                }
             }
             ForEach(section.rows) { task in
                 taskCard(task, departed: section.departed.contains(task.id))
@@ -1548,6 +1644,14 @@ struct WorkspaceView: View {
     private var canvasHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
             titleRow
+            if case .project(let id) = model.destination, let project = model.project(id) {
+                Text(project.desiredOutcome.map { "Outcome: \($0)" } ?? "No desired outcome yet.")
+                    .font(MacRowFont.title).foregroundStyle(.coTextSecondary)
+                if isPreLosslessProject {
+                    Text("Archived before projects kept their tasks, so none are listed here. Those tasks are still in their lists.")
+                        .font(MacRowFont.title).foregroundStyle(.coTextSecondary)
+                }
+            }
             if let refusal = model.unarchiveRefusal, model.destination == .project(refusal.projectID) {
                 HStack(spacing: 10) {
                     Text(refusal.message)
@@ -1566,15 +1670,31 @@ struct WorkspaceView: View {
                     .foregroundStyle(.coTextSecondary)
                     .carryOnFont(CarryOnTypeScale.meta)
             }
-            if !firstRun.showsFirstRunSidebar { listControls }
         }
         .padding(.horizontal, 28)
-        .padding(.top, 28)
+        // The native toolbar already supplies 26 pt above the board's 28 pt inset.
+        .padding(.top, 2)
         .padding(.bottom, 20)
     }
 
     private var titleRow: some View {
         MacListHeaderTitle(title: destinationTitle, caption: taskCountCaption) {
+            if !firstRun.showsFirstRunSidebar {
+                Menu {
+                    listControls
+                    if case .project(let id) = model.destination, let project = model.project(id), !model.isArchived(id) {
+                        Button(project.desiredOutcome == nil ? "Set outcome…" : "Edit outcome…") {
+                            model.error = nil
+                            outcomeDraft = project.desiredOutcome ?? ""
+                            projectOutcomeEditorID = UUID().uuidString
+                            editingOutcomeProject = project
+                        }
+                    }
+                } label: { Image(systemName: "ellipsis") }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .accessibilityLabel("List options")
+            }
             if case .project(let id) = model.destination, model.isArchived(id) {
                 Label("Archived", systemImage: "archivebox")
                     .font(.caption.weight(.semibold))
@@ -1594,7 +1714,7 @@ struct WorkspaceView: View {
     }
 
     private var listControls: some View {
-        HStack(spacing: 16) {
+        Group {
             if model.destination == .list(.inbox) {
                 Button("Clarify Inbox") { requestNavigation(.clarifyInbox) }
                     .buttonStyle(.carryOnSecondary)
@@ -1673,7 +1793,7 @@ struct WorkspaceView: View {
         case .date(let date): date.title
         case .project(let id): model.project(id)?.name ?? "Project"
         case .tag(let id): "#" + (model.tag(id)?.name ?? "Tag")
-        case .history(let state): state.title
+        case .history(let state): state == .completed ? "Done" : state.title
         case .agentRuns: AgentsCopy.allRuns
         }
     }
@@ -1685,7 +1805,15 @@ struct WorkspaceView: View {
             return FirstRunCopy.landingHeader.replacingOccurrences(of: "\(destinationTitle) · ", with: "")
         case .undecided, .welcome, .firstStep, .landing, .done: break
         }
+        if model.destination == .history(.completed) { return "Steps you took" }
         if model.destination.isHistory { return Self.plural(model.listResult?.totalCount ?? 0, "task") }
+        if model.destination == .list(.inbox) { return Self.plural(model.openTaskCount, "thing") + " to sort" }
+        if model.destination == .list(.next) { return Self.plural(model.openTaskCount, "step") }
+        if model.destination == .list(.someday) { return Self.plural(model.openTaskCount, "idea") + ", no pressure" }
+        if case .project = model.destination, let result = model.listResult {
+            let done = result.sections.filter { $0.kind == .completed }.reduce(0) { $0 + $1.totalCount }
+            return "\(done) of \(result.totalCount) steps taken"
+        }
         if model.destination == .list(.waiting), !model.listedRuns.isEmpty {
             return AgentsCopy.waitingHeader(people: model.openTaskCount, agents: model.listedRuns.count)
         }
@@ -1695,68 +1823,32 @@ struct WorkspaceView: View {
 
     // MARK: Project overview
 
-    private func projectOverviewCard(_ overview: ProjectOverview) -> some View {
-        let project = overview.project
-        let archived = overview.display.isArchived
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("PROJECT OUTCOME")
-                    .font(MacRowFont.sectionHeader)
-                    .tracking(1.5)
-                    .foregroundStyle(CarryOnColorStyle.coTextSecondary)
-                Spacer()
-                if !archived {
-                    Button(project.desiredOutcome == nil ? "Set outcome" : "Edit outcome") {
-                        model.error = nil
-                        outcomeDraft = project.desiredOutcome ?? ""
-                        projectOutcomeEditorID = UUID().uuidString
-                        editingOutcomeProject = project
-                    }
-                }
-            }
-            if let outcome = project.desiredOutcome, !outcome.isEmpty {
-                Text(outcome)
-                    .font(MacRowFont.titleStrong)
-                    .foregroundStyle(CarryOnColorStyle.coTextPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                Text(archived ? "No desired outcome." : "Define what will be true when this project is done.")
-                    .font(MacRowFont.title)
-                    .foregroundStyle(CarryOnColorStyle.coTextSecondary)
-            }
-            Divider()
-            if let next = overview.nextAction {
-                Label("First Next action", systemImage: "arrow.right.circle")
-                    .font(MacRowFont.sectionHeader)
-                    .foregroundStyle(CarryOnColorStyle.coTextSecondary)
-                Text(next.title)
-                    .font(MacRowFont.title)
-                    .foregroundStyle(CarryOnColorStyle.coTextPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                Text(projectNextExplanation(overview))
-                    .font(MacRowFont.title)
-                    .foregroundStyle(CarryOnColorStyle.coTextSecondary)
-            }
-            if overview.display.showsPreLosslessLine {
-                // FR-027: one neutral line; nothing says tasks were lost.
-                Text("Archived before projects kept their tasks, so none are listed here. Those tasks are still in their lists.")
-                    .font(MacRowFont.title)
-                    .foregroundStyle(CarryOnColorStyle.coTextSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CarryOnColorStyle.coSurfaceCard, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    /// One real Next action leads the list; selecting another row does not silently change it.
+    private var nowStep: TaskRecord? {
+        guard model.destination == .list(.next) else { return nil }
+        return model.tasks.map { model.task($0.id) ?? $0 }.first(where: { $0.state == .next })
     }
 
-    private func projectNextExplanation(_ overview: ProjectOverview) -> String {
-        let counts = overview.openCounts
-        if (counts[.inbox] ?? 0) > 0 { return "No Next action yet · clarify an Inbox item in this project." }
-        if (counts[.waiting] ?? 0) > 0 { return "No Next action yet · this project is waiting on a dependency." }
-        if (counts[.someday] ?? 0) > 0 { return "No Next action yet · its open work is in Someday." }
-        return "No open actions · review whether this project is complete."
+    private func nowCard(_ task: TaskRecord) -> some View {
+        HStack(spacing: 16) {
+            Button { requestNavigation(.task(task.id)) } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        if let project = task.projectID {
+                            Circle().fill(projectTint(model.project(project)?.color)).frame(width: 8, height: 8)
+                            Text(model.projectLabel(project) + " · now")
+                        } else { Text("Now") }
+                    }
+                    .font(MacRowFont.meta).foregroundStyle(.coTextSecondary)
+                    Text(task.title).font(MacRowFont.action(size: 20, weight: 600, relativeTo: .title3))
+                        .foregroundStyle(.coTextPrimary)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }.buttonStyle(.plain)
+            Button("Done") { requestNavigation(.complete(task.id)) }.buttonStyle(.carryOnPrimary)
+            nowNotNowButton(for: task)
+        }
+        .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+        .background(CarryOnColorStyle.coSurfaceCard, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     // MARK: Task rows
@@ -1799,6 +1891,9 @@ struct WorkspaceView: View {
         let selected = selectedTaskID == task.id
         return taskRowLine(task, selected: selected, showsProject: !inProjectGroup, isCurrent: currentStepID == task.id)
             .macRowSurface(selected: selected)
+            // Lazy rows can retain the previous list's mark/ink and selection surface after a
+            // move. Reset those rendered contents, keeping the outer task-ID scroll/hold anchor.
+            .id(task.id.rawValue + ":" + task.state.rawValue + (selected ? ":selected" : ":unselected"))
             .opacity(departed && !selected ? 0.55 : 1)
             .onHover { inside in
                 if inside {
@@ -1807,12 +1902,22 @@ struct WorkspaceView: View {
                     hoveredTaskID = nil
                 }
             }
+            .contextMenu {
+                if task.state.isTerminal {
+                    Button("Reopen…") { requestNavigation(.reopen(task.id)) }
+                } else {
+                    Button("Rename title…") { beginQuickRename(task) }.disabled(selectedTaskID != nil)
+                    Button("Complete") { requestNavigation(.complete(task.id)) }
+                    ForEach(TaskList.allCases.filter { $0.taskState != task.state }) { list in
+                        Button("Move to " + list.title) { requestNavigation(.move(task.id, list)) }
+                    }
+                }
+            }
             .id(task.id)
     }
 
-    /// A row in the Carry On style: the mark, the title, then the trailing meta. The Inbox and Someday
-    /// have no mark, so their complete control is the same open circle, shown at the end of the row
-    /// while the pointer is over it or it is selected.
+    /// A row in the Carry On style: the mark, title and trailing meta. Inbox and Someday
+    /// have no completion circle; their existing actions remain in the row context menu.
     @ViewBuilder
     private func taskRowLine(_ task: TaskRecord, selected: Bool, showsProject: Bool, isCurrent: Bool) -> some View {
         let kind = MacRowKind(state: task.state, isCurrent: isCurrent)
@@ -1831,7 +1936,7 @@ struct WorkspaceView: View {
         } title: {
             if task.state.isTerminal {
                 Button {
-                    requestNavigation(.task(selected ? nil : task.id))
+                    requestNavigation(.task(selectedTaskID == task.id ? nil : task.id))
                 } label: {
                     MacRowTitleText(title: task.title, kind: kind, selected: selected)
                         .contentShape(Rectangle())
@@ -1841,7 +1946,7 @@ struct WorkspaceView: View {
                 .accessibilityAddTraits(selected ? .isSelected : [])
             } else {
                 Button {
-                    requestNavigation(.task(selected ? nil : task.id))
+                    requestNavigation(.task(selectedTaskID == task.id ? nil : task.id))
                 } label: {
                     MacRowTitleText(title: task.title, kind: kind, selected: selected)
                         .contentShape(Rectangle())
@@ -1849,10 +1954,6 @@ struct WorkspaceView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Edit \(task.title)")
                 .accessibilityAddTraits(selected ? .isSelected : [])
-                .contextMenu {
-                    Button("Rename title…") { beginQuickRename(task) }
-                        .disabled(selectedTaskID != nil)
-                }
             }
         } trailing: {
             rowTrailing(task, selected: selected, showsProject: showsProject, kind: kind)
@@ -1862,16 +1963,6 @@ struct WorkspaceView: View {
     @ViewBuilder
     private func rowTrailing(_ task: TaskRecord, selected: Bool, showsProject: Bool, kind: MacRowKind) -> some View {
         HStack(spacing: 12) {
-            if !task.state.isTerminal, !kind.hasMark {
-                Button {
-                    requestNavigation(.complete(task.id))
-                } label: {
-                    MacRowMark(kind: .open)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Complete \(task.title)")
-                .opacity(selected || hoveredTaskID == task.id ? 1 : 0)
-            }
             if task.state == .waiting, let waitingFor = task.waitingFor?.trimmingCharacters(in: .whitespacesAndNewlines),
                 !waitingFor.isEmpty
             {
@@ -1885,47 +1976,34 @@ struct WorkspaceView: View {
                 }
                 .macRowMeta(selected: selected)
             }
-            if showsProject, let projectID = task.projectID, model.destination != .project(projectID) {
-                Text(model.projectLabel(projectID))
-                    .macRowMeta(selected: selected)
-            }
-            if let id = task.tagIDs.first, let tag = model.tag(id) {
-                Text("#\(tag.name)")
-                    .font(MacRowFont.meta)
-                    .lineLimit(1)
-                    .foregroundStyle(tagTint(id))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(tagTint(id).opacity(0.15), in: Capsule())
-            }
-            if task.tagIDs.count > 1 {
-                Text("+\(task.tagIDs.count - 1)")
-                    .macRowMeta(selected: selected)
-            }
-            if let due = task.dueDate {
-                Text(due.isoString)
-                    .macRowMeta(tone: MacDueTone(due: due, today: CalendarDay(date: Date())), selected: selected)
-            }
-            if task.state.isTerminal {
-                Button("Reopen…") { requestNavigation(.reopen(task.id)) }
-                    .fixedSize(horizontal: true, vertical: false)
-                    .accessibilityLabel("Reopen \(task.title)")
-            } else {
-                Menu {
-                    ForEach(TaskList.allCases.filter { $0.taskState != task.state }) { list in
-                        Button {
-                            requestNavigation(.move(task.id, list))
-                        } label: {
-                            Label(list.title, systemImage: list.symbol)
-                        }
-                    }
-                } label: {
-                    Image(systemName: "arrowshape.turn.up.right")
+            if !task.state.isTerminal {
+                if showsProject, let projectID = task.projectID, model.destination != .project(projectID) {
+                    Text(model.projectLabel(projectID))
+                        .macRowMeta(selected: selected)
                 }
-                .menuStyle(.borderlessButton)
-                .accessibilityLabel("Move \(task.title) to another GTD list")
-                .help("Move to another GTD list")
+                if let id = task.tagIDs.first, let tag = model.tag(id) {
+                    Text("#\(tag.name)")
+                        .font(MacRowFont.meta)
+                        .lineLimit(1)
+                        .foregroundStyle(tagTint(id))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(tagTint(id).opacity(0.15), in: Capsule())
+                }
+                if task.tagIDs.count > 1 {
+                    Text("+\(task.tagIDs.count - 1)")
+                        .macRowMeta(selected: selected)
+                }
+                if let due = task.dueDate {
+                    Text(due.isoString)
+                        .macRowMeta(tone: MacDueTone(due: due, today: CalendarDay(date: Date())), selected: selected)
+                }
             }
+            if let finished = task.completedAt ?? task.cancelledAt, task.state.isTerminal {
+                Text(finished, format: .dateTime.weekday(.wide).month(.abbreviated).day())
+                    .macRowMeta(selected: selected)
+            }
+
         }
     }
 
@@ -1942,7 +2020,7 @@ struct WorkspaceView: View {
         let preview = model.capturePreview
         let hasDraft = !model.draft.isEmpty
         let ready = model.capturePreviewReadiness == .ready
-        return MacNewTaskCard(listTitle: model.selectedList.title) {
+        return MacNewTaskCard(listTitle: preview.project?.name ?? model.selectedList.title) {
             TextField("Add a task", text: $model.draft)
                 .textFieldStyle(.plain)
                 .macNewTaskTitleField()
@@ -1956,29 +2034,40 @@ struct WorkspaceView: View {
                     .onSubmit { requestNavigation(.createTask) }
                     .padding(.top, 12)
             }
-            if hasDraft || model.selectedList == .waiting {
-                if ready, !preview.tokens.isEmpty, !preview.title.isEmpty {
-                    MacCaptureNote(text: "“\(preview.title)”")
-                }
-                if ready {
-                    MacNewTaskClassification(project: preview.project, tags: preview.tags)
-                } else {
-                    MacCaptureNote(text: capturePreviewStatus, topPadding: 14)
-                }
-                if ready, hasDraft, let problem = preview.problemMessage, preview.problem != .emptyTitle {
-                    MacCaptureNote(text: problem, danger: true)
-                }
-                if model.hasAppliedTaskFilter || !model.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    MacCaptureNote(text: "Current search may hide the new task from this list.")
-                }
-                MacNewTaskFooter(
-                    addEnabled: ready && !addDisabled(preview), hint: "⌘N · Return adds",
-                    onAdd: { requestNavigation(.createTask) }
-                ) {
-                    if case .failed = model.capturePreviewReadiness {
-                        Button("Retry preview") { Task { await model.prepareCapturePreview(model.captureDraft) } }
-                            .buttonStyle(.carryOnQuiet)
+            if ready {
+                MacNewTaskClassification(project: preview.project, tags: preview.tags, showsDetailPlaceholders: true)
+            } else {
+                MacCaptureNote(text: capturePreviewStatus, topPadding: 14)
+            }
+            if ready, hasDraft, let problem = preview.problemMessage, preview.problem != .emptyTitle {
+                MacCaptureNote(text: problem, danger: true)
+            }
+            if model.hasAppliedTaskFilter || !model.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                MacCaptureNote(text: "Current search may hide the new task from this list.")
+            }
+            Text("Put it in").font(MacRowFont.sectionHeader).foregroundStyle(.coTextSecondary).padding(.top, 18).padding(.bottom, 8)
+            HStack(spacing: 6) {
+                ForEach(TaskList.allCases) { list in
+                    Button {} label: {
+                        CarryOnChip(list.title, size: .quick, isSelected: model.selectedList == list)
+                            .fixedSize()
                     }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(model.selectedList == list ? .isSelected : [])
+                        .disabled(true)
+                        .help("The task uses the currently selected list.")
+                }
+            }
+            if let error = model.error { MacCaptureNote(text: error, danger: true) }
+            MacNewTaskFooter(
+                addEnabled: ready && !addDisabled(preview), hint: "⌘N · Return adds · Esc closes",
+                onAdd: { requestNavigation(.createTask) }
+            ) {
+                Button("Cancel") { capturePresented = false }
+                    .buttonStyle(.carryOnQuiet).keyboardShortcut(.cancelAction)
+                if case .failed = model.capturePreviewReadiness {
+                    Button("Retry preview") { Task { await model.prepareCapturePreview(model.captureDraft) } }
+                        .buttonStyle(.carryOnQuiet)
                 }
             }
             if let notice = model.captureNotice {
@@ -2028,6 +2117,7 @@ extension WorkspaceView {
     fileprivate func taskSheets<Content: View>(_ content: Content) -> some View {
         content
             // presentation-region: task editor, rename, voice, move, reopen and discard sheets
+            .sheet(isPresented: $searchPresented) { taskSearch }
             .sheet(
                 isPresented: $quickOpenPresented,
                 onDismiss: {
@@ -2051,11 +2141,26 @@ extension WorkspaceView {
                     .disabled(sheetIsBusy)
                     .interactiveDismissDisabled(sheetIsBusy)
             }
-            .sheet(isPresented: $voicePresented) {
+            .sheet(isPresented: $capturePresented) {
+                smartAdd
+                    .frame(width: 520)
+                    .disabled(sheetIsBusy)
+                    .interactiveDismissDisabled(sheetIsBusy)
+                    .task {
+                        await model.prepareCapturePreview(model.captureDraft)
+                        addFocused = true
+                    }
+            }
+            .sheet(isPresented: $voicePresented, onDismiss: {
+                if captureAfterVoice {
+                    captureAfterVoice = false
+                    capturePresented = true
+                }
+            }) {
                 VoiceCaptureView(onUseAsTask: { transcript in
                     if model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         model.draft = transcript
-                        addFocused = true
+                        captureAfterVoice = true
                     } else {
                         pendingVoiceTranscript = transcript
                         confirmingReplaceDraft = true
@@ -2093,7 +2198,7 @@ extension WorkspaceView {
                 Button("Replace draft", role: .destructive) {
                     if let transcript = pendingVoiceTranscript { model.draft = transcript }
                     pendingVoiceTranscript = nil
-                    addFocused = true
+                    capturePresented = true
                 }
                 Button("Keep draft", role: .cancel) { pendingVoiceTranscript = nil }
             } message: {
@@ -2104,7 +2209,7 @@ extension WorkspaceView {
                 onDismiss: {
                     if focusCaptureAfterChoice {
                         focusCaptureAfterChoice = false
-                        addFocused = true
+                        capturePresented = true
                     }
                 }
             ) {
@@ -2125,6 +2230,23 @@ extension WorkspaceView {
             }
             // presentation-region-end
     }
+
+    // These task-editor popovers are opened only by the person's Now / Date buttons. They use
+    // the same guarded presentation region as taskSheets and never read background sync status.
+    // presentation-region: task editor, rename, voice, move, reopen and discard sheets
+    private func nowNotNowButton(for task: TaskRecord) -> some View {
+        Button("Not now") { requestNavigation(.notNow(task.id)) }
+            .buttonStyle(.carryOnSecondary)
+            .popover(item: $notNowTask, arrowEdge: .bottom) { current in
+                MacNotNowPopoverContent(
+                    onPickDay: { notNowTask = nil; requestNavigation(.inspectorAction(current.id, .pickDay)) },
+                    onWaiting: { notNowTask = nil; requestNavigation(.move(current.id, .waiting)) },
+                    onSomeday: { notNowTask = nil; requestNavigation(.move(current.id, .someday)) },
+                    onChangeStep: { notNowTask = nil; requestNavigation(.inspectorAction(current.id, .changeStep)) })
+            }
+    }
+
+    // presentation-region-end
 
     private func quickRenameSheet(_ task: TaskRecord) -> some View {
         let title = quickRenameTitle.trimmingCharacters(in: .whitespacesAndNewlines)

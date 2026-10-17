@@ -38,12 +38,16 @@ struct AgentRunRow: View {
         return VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
                 if needsYou { Circle().fill(CarryOnColorStyle.coStepDotCurrent).frame(width: 7, height: 7) }
-                Text(item.stepTitle)
+                Text(verbatim: item.stepTitle)
                     .font(needsYou ? MacRowFont.titleStrong : MacRowFont.title)
                     .foregroundStyle(CarryOnColorStyle.coTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            // The tone is set first: the innermost foregroundStyle wins over macRowMeta's secondary default.
-            Text(item.subtitle(now: now)).foregroundStyle(tone.ink).macRowMeta()
+            Text(verbatim: item.subtitle(now: now))
+                .font(MacRowFont.meta).foregroundStyle(tone.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -59,7 +63,7 @@ struct AgentRunRow: View {
         return MacTaskRowShell {
             MacBoardIconView(icon: .agentRun, size: 18).foregroundStyle(CarryOnColorStyle.coMarkOpen)
         } title: {
-            Text(item.stepTitle).font(MacRowFont.title).foregroundStyle(CarryOnColorStyle.coTextPrimary).lineLimit(1)
+            Text(verbatim: item.stepTitle).font(MacRowFont.title).foregroundStyle(CarryOnColorStyle.coTextPrimary).lineLimit(1)
         } trailing: {
             HStack(spacing: 0) {
                 Text("\(item.agentName) · ")

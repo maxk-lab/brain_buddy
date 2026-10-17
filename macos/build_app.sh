@@ -26,6 +26,14 @@ app_dir="$(pwd)/.build/BrainBuddyMac.app"
 mkdir -p "$app_dir/Contents/MacOS"
 cp AppInfo.plist "$app_dir/Contents/Info.plist"
 cp .build/debug/BrainBuddyMac "$app_dir/Contents/MacOS/BrainBuddyMac"
+# Keep SwiftPM resources inside the signed application resource directory.
+mkdir -p "$app_dir/Contents/Resources"
+for resource_bundle in .build/debug/*.bundle; do
+    [ -d "$resource_bundle" ] || continue
+    bundle_name="${resource_bundle##*/}"
+    rm -rf "$app_dir/$bundle_name" "$app_dir/Contents/Resources/$bundle_name"
+    cp -R "$resource_bundle" "$app_dir/Contents/Resources/$bundle_name"
+done
 speech_resources="$app_dir/Contents/Resources/Whisper"
 rm -rf "$speech_resources"
 mkdir -p "$speech_resources/openai_whisper-base" "$speech_resources/whisper-base"

@@ -41,7 +41,7 @@ struct AgentRunsCanvas: View {
                         .foregroundStyle(.coTextSecondary).carryOnFont(CarryOnTypeScale.meta)
                 }
             }
-            .padding(.horizontal, 28).padding(.top, 28).padding(.bottom, 20)
+            .padding(.horizontal, 28).padding(.top, 2).padding(.bottom, 20)
             ScrollView {
                 // Board M22: one column per group, side by side.
                 HStack(alignment: .top, spacing: 12) {
@@ -58,8 +58,11 @@ struct AgentRunsCanvas: View {
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel("\(entry.group.title), \(entry.items.count) runs")
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
                 .padding(.horizontal, 28).padding(.bottom, 28)
             }
             .overlay { placeholder(isEmpty: shown.isEmpty) }

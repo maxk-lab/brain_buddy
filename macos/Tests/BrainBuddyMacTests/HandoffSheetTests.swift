@@ -82,6 +82,8 @@
         func menuWordingAndArrowKeys() {
             #expect(AgentsCopy.handOff == "Hand off…")
             #expect(source().contains(".onMoveCommand"))
+            #expect(source().contains("case .up, .left:"))
+            #expect(source().contains("case .down, .right:"))
             #expect(source().contains("@FocusState private var agentFocus"))
         }
 
