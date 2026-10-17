@@ -217,12 +217,12 @@ impl World {
         calls["count"].as_u64().expect("call count")
     }
 
-    /// A new synthetic owner. The test control owner factory is not used: its
-    /// `.invalid` addresses are refused by the signup email validator.
+    /// A new synthetic owner on `example.com`. The test control owner factory is
+    /// not used because `Member` also needs the raw session cookie.
     async fn owner(&self) -> Member {
         let invites = self.ctl.invites(1).await.expect("invite");
         let code = invites["codes"][0].as_str().expect("invite code");
-        let email = format!("voice-{}@conformance.example.org", uniq());
+        let email = format!("voice-{}@conformance.example.com", uniq());
         let mut api = self.anon.fresh();
         let body = json!({
             "email": email, "password": "Conformance-pass-1!", "invite_code": code
