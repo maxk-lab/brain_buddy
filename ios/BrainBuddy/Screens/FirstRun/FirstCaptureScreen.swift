@@ -32,6 +32,7 @@ struct FirstCaptureScreen: View {
                     label: "What feels heaviest?", text: $text, style: FirstRunType.large, axis: .vertical,
                     minHeight: Layout.fieldMinHeight, focus: $isFocused
                 )
+                .textInputAutocapitalization(.never)
                 .padding(.top, Layout.fieldGap)
                 Text("It goes to your Inbox, as you wrote it.")
                     .carryOnText(CarryOnTypeScale.meta)
