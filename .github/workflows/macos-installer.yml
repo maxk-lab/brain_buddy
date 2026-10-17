@@ -1,0 +1,104 @@
+# Builds the Mac app in release and packages it as a .dmg installer on every
+# main push that touches what the app is built from. The .dmg is a workflow
+# artifact. It is ad-hoc signed only (macos/build_app.sh), so Gatekeeper asks
+# the user to confirm the first launch; Developer ID signing and notarization
+# need Apple credentials as repository secrets and are not wired yet.
+name: macOS installer
+
+on:
+  push:
+    branches: [main]
+    # Same inputs as ci.yml's Mac lane filter, plus this file.
+    paths:
+      - "macos/**"
+      - "ios/BrainBuddyKit/**"
+      - "ios/scripts/**"
+      - "rust/**"
+      - ".github/workflows/macos-installer.yml"
+  # A PR that changes how the installer is made builds one too, to prove it.
+  pull_request:
+    paths:
+      - "macos/build_app.sh"
+      - ".github/workflows/macos-installer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dmg:
+    name: Mac app installer (.dmg)
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout exact triggering commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Select Xcode 26
+        run: bash ios/scripts/select-xcode.sh
+
+      # Same key as warm-rust-bridge.yml's "Mac only" entry and ci.yml's Mac
+      # lane, so a main push usually restores the bridge instead of building it.
+      - name: Key the Rust bridge on its inputs
+        id: bridge-key
+        env:
+          BB_APPLE_TARGETS: aarch64-apple-darwin x86_64-apple-darwin
+        run: |
+          inputs="$(git rev-parse HEAD:rust HEAD:ios/scripts/build-rust-bridge.sh)
+          $(xcodebuild -version)
+          $(uname -m)
+          ${BB_APPLE_TARGETS:-all}"
+          echo "key=rust-bridge-apple-$(printf '%s' "${inputs}" | git hash-object --stdin)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Rust bridge
+        id: bridge-cache
+        uses: actions/cache/restore@v6
+        with:
+          key: ${{ steps.bridge-key.outputs.key }}
+          path: |
+            ios/BrainBuddyKit/Artifacts/BrainBuddyRustFFI.xcframework
+            ios/BrainBuddyKit/Sources/BrainBuddyRustBindings/BrainBuddyRustBindings.swift
+
+      # Keep the version equal to rust/rust-toolchain.toml.
+      - name: Install pinned Rust on cache miss
+        if: steps.bridge-cache.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable action, fixed toolchain
+        with:
+          toolchain: 1.99.0
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Build the release app
+        env:
+          BB_BUILD_CONFIG: release
+          BB_RUST_BRIDGE_READY: ${{ steps.bridge-cache.outputs.cache-hit == 'true' && '1' || '' }}
+        run: sh macos/build_app.sh
+
+      - name: Package the .dmg
+        id: dmg
+        run: |
+          name="BrainBuddyMac-$(git rev-parse --short HEAD).dmg"
+          stage="${RUNNER_TEMP}/dmg"
+          mkdir -p "${stage}"
+          cp -R macos/.build/BrainBuddyMac.app "${stage}/"
+          ln -s /Applications "${stage}/Applications"
+          hdiutil create -volname "Brain Buddy" -srcfolder "${stage}" -ov -format UDZO "${RUNNER_TEMP}/${name}"
+          hdiutil verify "${RUNNER_TEMP}/${name}"
+          echo "path=${RUNNER_TEMP}/${name}" >> "$GITHUB_OUTPUT"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.dmg.outputs.name }}
+          path: ${{ steps.dmg.outputs.path }}
+          if-no-files-found: error
