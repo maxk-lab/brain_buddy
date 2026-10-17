@@ -46,6 +46,7 @@ struct SettingsScreen: View {
         .bbScreenTitle("Settings")
         .sheet(item: $signInRequest) { request in
             SignInSheet(email: request.email, serverURL: request.serverURL)
+                .presentationDragIndicator(.hidden)
         }
     }
 
