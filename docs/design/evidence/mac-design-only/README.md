@@ -70,3 +70,20 @@ are not certified by the visual replay. System appearance was restored to Auto.
 | Agent settings | [Light](M29-light.jpg) |
 | Add agent | [Light](M30-light.jpg) |
 | Done result | [Dark](done-after.jpg) |
+
+## CI native-display baseline reconciliation
+
+Run [39060760682](https://github.com/maxk-lab/brain_buddy/actions/runs/39060760682)
+on `975046ac` exposed 16 stale `native1x` baselines and one missing Next-action
+cohort baseline. The original diagnostic PNGs were decoded from the uploaded
+`macos-app-logs-1/macos-swift-test.log` and visually reviewed before replacement.
+The differences are the approved warm sidebar/settings palette and opaque footer,
+typed-welcome/header geometry, All-runs header position, and the retained password
+field in Add agent (840×906px rather than the experimental 840×776px form).
+The new cohort image shows its Now card plus all three ordinary rows. No product
+code, comparator, threshold or environment setting changed for this reconciliation.
+The `native1x` suffix identifies the host profile; bitmap dimensions are retained
+as emitted by the existing native test host, without resampling. All 17 image
+hashes/dimensions and available old/new pixel counts are in
+`ci-native-baseline-review.json`. Earlier physical-Mac `native2x` baselines remain
+unchanged. Exact-head CI must pass again after this reviewed baseline update.
