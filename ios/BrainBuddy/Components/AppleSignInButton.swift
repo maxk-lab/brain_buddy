@@ -10,7 +10,7 @@ struct AppleSignInButton: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(action: action) }
 
     func makeUIView(context: Context) -> ASAuthorizationAppleIDButton {
-        let button = ASAuthorizationAppleIDButton(type: .signIn, style: .black)
+        let button = ASAuthorizationAppleIDButton(type: .continue, style: .black)
         button.cornerRadius = 8
         button.setContentHuggingPriority(.defaultLow, for: .horizontal)
         button.addTarget(context.coordinator, action: #selector(Coordinator.activate), for: .touchUpInside)

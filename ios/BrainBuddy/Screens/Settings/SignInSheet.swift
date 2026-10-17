@@ -72,7 +72,11 @@ struct SignInSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        Group {
+            if workspace.account == nil, case .choice = step {
+                choiceScreen
+            } else {
+                NavigationStack {
             Group {
             if step == .invite {
                 inviteStep
@@ -132,10 +136,12 @@ struct SignInSheet: View {
                     Button("Cancel") { cancelAndDismiss() }.frame(minHeight: 44)
                 }
             }
-            .task(id: serverURL) { await loadMethods() }
-            .onAppear { focused = .email }
-            .onDisappear { cancelCurrentOperation(); coordinator.stopMonitoring() }
+                }
+            }
         }
+        .task(id: serverURL) { await loadMethods() }
+        .onAppear { if workspace.account != nil { focused = .email } }
+        .onDisappear { cancelCurrentOperation(); coordinator.stopMonitoring() }
         .interactiveDismissDisabled(isBusy || showsDeletionCancelledNotice)
         .alert("Your account deletion was cancelled", isPresented: $showsDeletionCancelledNotice) {
             Button("OK") { workspace.acknowledgeAccountDeletionNotice(); dismiss() }
@@ -324,6 +330,100 @@ struct SignInSheet: View {
         .foregroundStyle(.coTextSecondary)
         .accessibilityHidden(true)
     }
+
+    private var choiceScreen: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                Rectangle().fill(.coBgGround).ignoresSafeArea()
+                VStack(spacing: CGFloat(CarryOnSpace.md)) {
+                    Capsule().fill(.coControlQuietPressed)
+                        .frame(width: 64, height: 6)
+                        .padding(.top, CGFloat(CarryOnSpace.md))
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: CGFloat(CarryOnSpace.md)) {
+                            Text("Sign in or create an account")
+                                .carryOnFont(CarryOnTypeScale.title)
+                                .foregroundStyle(.coTextPrimary)
+                                .accessibilityAddTraits(.isHeader)
+                            Text("The tasks on this iPhone are kept. Signing in adds them to your account.")
+                                .carryOnFont(CarryOnTypeScale.meta)
+                                .foregroundStyle(.coTextSecondary)
+                            if methods?.apple == true {
+                                AppleSignInButton { startProvider(.apple) }
+                                    .frame(maxWidth: .infinity).frame(height: 50)
+                                    .disabled(isBusy || !isOnline)
+                            }
+                            if methods?.google == true {
+                                GoogleSignInButton(isBusy: isBusy) { startProvider(.google) }
+                                    .frame(height: 50).disabled(isBusy || !isOnline)
+                            }
+                            if methods == nil {
+                                Text(availabilityFailed ? "Couldn't load sign-in methods. Try again or use your password." : "Loading sign-in methods…")
+                                    .carryOnFont(CarryOnTypeScale.meta).foregroundStyle(.coTextSecondary)
+                                Button("Retry") { Task { await loadMethods() } }
+                                    .signInLink().disabled(isBusy || !isOnline)
+                            }
+                            if methods?.apple == true || methods?.google == true { orDivider }
+                            if methods?.email == true {
+                                emailField
+                                action("Send me a code", enabled: !email.isEmpty) { requestCode(recovering: false) }
+                            }
+                            HStack(spacing: CGFloat(CarryOnSpace.sm)) {
+                                Button("Use a password instead") { step = .password; focused = .email }
+                                    .signInLink().fixedSize(horizontal: true, vertical: false).disabled(isBusy)
+                                Spacer(minLength: CGFloat(CarryOnSpace.sm))
+                                Button("Advanced") { showsAdvanced.toggle() }
+                                    .signInLink().fixedSize(horizontal: true, vertical: false).disabled(isBusy)
+                            }
+                            if showsAdvanced {
+                                VStack(alignment: .leading, spacing: CGFloat(CarryOnSpace.sm)) {
+                                    TextField("Server address", text: $serverAddress)
+                                        .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                                        .focused($focused, equals: .server).carryOnField()
+                                    Text("Use an https address. http works only for localhost, during development.")
+                                        .carryOnFont(CarryOnTypeScale.meta).foregroundStyle(.coTextSecondary)
+                                    Button("Use the default server") { serverAddress = SignInServerAddress.defaultString }
+                                        .signInLink()
+                                }
+                                .disabled(isBusy)
+                            }
+                            if let failureMessage {
+                                EditorValidationMessage(text: failureMessage)
+                                if let failureReferenceID {
+                                    Text("Reference ID: \(failureReferenceID)")
+                                        .font(.footnote.monospaced()).textSelection(.enabled)
+                                }
+                            }
+                            if let notice { Text(notice).accessibilityAddTraits(.updatesFrequently) }
+                        }
+                        .padding(.horizontal, CGFloat(CarryOnSpace.lg))
+                        .padding(.top, CGFloat(CarryOnSpace.md))
+                        .padding(.bottom, CGFloat(CarryOnSpace.lg))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: min(680, geometry.size.height - 24))
+                .background(.coBgGround)
+                .clipShape(.rect(topLeadingRadius: 32, topTrailingRadius: 32))
+
+                ZStack {
+                    Image(systemName: "figure.stairs")
+                        .font(.system(size: CGFloat(CarryOnSpace.xxl) - CGFloat(CarryOnSpace.xs)))
+                        .foregroundStyle(.coTextSecondary)
+                    Circle()
+                        .fill(Color(CarryOnPrimitive.oxblood300))
+                        .frame(width: CGFloat(CarryOnSpace.xxs), height: CGFloat(CarryOnSpace.xxs))
+                        .offset(x: -CGFloat(CarryOnSpace.xxs), y: -CGFloat(CarryOnSpace.md + CarryOnSpace.xxs))
+                }
+                    .accessibilityHidden(true)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height * 0.138)
+                    .allowsHitTesting(false)
+            }
+        }
+        .background(.coBgGround)
+        .ignoresSafeArea()
+    }
+
     private var backButton: some View {
         Button("Use another method") { returnToChoice() }.signInLink().disabled(isBusy)
     }
