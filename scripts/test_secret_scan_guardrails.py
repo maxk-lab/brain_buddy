@@ -387,11 +387,11 @@ class SecretScanWorkflowTest(unittest.TestCase):
 
     def test_findings_are_redacted_and_least_privileged(self) -> None:
         self.assertNotIn("gitleaks git --verbose", self.text)
-        self.assertEqual(self.text.count("gitleaks git --redact"), 2)
+        self.assertEqual(self.text.count("gitleaks git --redact"), 1)
         self.assertIn("permissions:\n  contents: read", self.text)
         self.assertNotIn("contents: write", self.text)
         self.assertEqual(
-            self.text.count("LOG_OPTS: ${{ steps.range.outputs.log_opts }}"), 2
+            self.text.count("LOG_OPTS: ${{ steps.range.outputs.log_opts }}"), 1
         )
 
 
@@ -425,13 +425,9 @@ class ScanRangeTest(unittest.TestCase):
         cls.script = _step_script(
             SECRET_SCAN_WORKFLOW.read_text(encoding="utf-8"), RANGE_STEP
         )
-        cls.scan_scripts = {
-            mode: _step_script(SECRET_SCAN_WORKFLOW.read_text(), name)
-            for mode, name in (
-                ("range", "Scan changed commit range"),
-                ("full", "Scan full history"),
-            )
-        }
+        cls.scan_script = _step_script(
+            SECRET_SCAN_WORKFLOW.read_text(), "Scan the selected commits"
+        )
         cls._tmp = tempfile.TemporaryDirectory()
         repo = Path(cls._tmp.name) / "repo"
         repo.mkdir()
@@ -515,7 +511,7 @@ class ScanRangeTest(unittest.TestCase):
             )
             shim.chmod(0o755)
             proc = subprocess.run(
-                ["bash", "-c", self.scan_scripts[output["mode"]]],
+                ["bash", "-c", self.scan_script],
                 cwd=self.repo, capture_output=True, text=True, check=True,
                 env={**os.environ, "PATH": f"{directory}:{os.environ['PATH']}",
                      "LOG_OPTS": output.get("log_opts", "")},

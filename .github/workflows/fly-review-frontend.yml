@@ -111,34 +111,13 @@ jobs:
             echo "Visual-path eligibility: rejected; no rendered frontend change found." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  preview-checks:
-    name: Preview frontend build
-    needs: eligibility
-    if: needs.eligibility.outputs.eligible == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout exact PR head
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "22.22.2"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Build exact preview candidate
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
+  # No separate build job: `flyctl deploy` builds the same Dockerfile remotely
+  # and fails before anything is released, and CI's `frontend` lane already
+  # builds the bundle for this head.
   deploy:
     name: Deploy preview
-    needs: [eligibility, preview-checks]
-    if: needs.eligibility.outputs.eligible == 'true' && needs.preview-checks.result == 'success'
+    needs: eligibility
+    if: needs.eligibility.outputs.eligible == 'true'
     runs-on: ubuntu-latest
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_PREVIEW_API_TOKEN }}
@@ -150,7 +129,9 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@v1
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # v1.6
+        with:
+          version: 0.4.118
 
       - name: Derive and validate stable preview identity
         run: |
@@ -268,7 +249,9 @@ jobs:
       FLY_API_TOKEN: ${{ secrets.FLY_PREVIEW_API_TOKEN }}
     steps:
       - name: Set up Flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@v1
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # v1.6
+        with:
+          version: 0.4.118
 
       - name: Derive and validate cleanup target
         run: |

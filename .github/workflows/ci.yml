@@ -61,7 +61,7 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "$BRAIN_BUDDY_CANDIDATE_SHA"
 
       - name: Run actionlint
-        uses: raven-actions/actionlint@v2
+        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
 
       - name: Validate Brain Buddy design skill contracts
         run: python3 -m unittest scripts/test_validate_brain_buddy_design_skill.py -v
@@ -503,45 +503,44 @@ jobs:
         with:
           toolchain: 1.99.0
 
+      # The editable install compiles the PyO3 bridge into rust/target, about a
+      # minute per job when cold. Only a push to main writes the entry (from one
+      # shard), so pull requests and merge groups restore main's build without
+      # spending the repository's shared cache quota on copies of their own.
+      - name: Cache the backend Rust bridge build
+        if: env.RUN == 'true'
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: rust -> target
+          shared-key: backend-wheel
+          save-if: ${{ github.ref == 'refs/heads/main' && matrix.shard == 0 }}
+
       - name: Install dependencies
         if: env.RUN == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -e .[dev]
 
-      # Report-only while the existing advisory backlog is worked down through
-      # Dependabot. Findings land in the run summary so they stay visible
-      # instead of scrolling past in the log.
-      - name: Audit Python dependencies
-        if: env.RUN == 'true'
-        continue-on-error: true
-        run: |
-          pip install pip-audit
-          {
-            echo "### Backend dependency audit"
-            echo '```'
-            pip-audit --progress-spinner off 2>&1 || true
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
+      # The static checks read the whole tree, not a shard's tests, so one shard
+      # runs them; both would only report the same verdict twice.
       - name: Ruff lint
-        if: env.RUN == 'true'
+        if: env.RUN == 'true' && matrix.shard == 0
         run: ruff check app tests
 
       # Never checked in CI before, so 33 of 145 files had drifted out of
       # black's format despite black being the documented formatter.
       - name: Format check
-        if: env.RUN == 'true'
+        if: env.RUN == 'true' && matrix.shard == 0
         run: black --check app tests
 
       - name: Type check
-        if: env.RUN == 'true'
+        if: env.RUN == 'true' && matrix.shard == 0
         run: mypy app
 
       # Architectural fitness functions: the layering documented in CLAUDE.md is
       # enforced here rather than left to review.
       - name: Import contracts
-        if: env.RUN == 'true'
+        if: env.RUN == 'true' && matrix.shard == 0
         run: lint-imports
 
       # Test-impact selection (pull requests only). Every push to main records
@@ -798,18 +797,6 @@ jobs:
         if: env.RUN == 'true'
         run: npm ci
 
-      # Report-only, same rationale as the backend audit step.
-      - name: Audit npm dependencies
-        if: env.RUN == 'true'
-        continue-on-error: true
-        run: |
-          {
-            echo "### Frontend dependency audit"
-            echo '```'
-            npm audit 2>&1 || true
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       - name: ESLint lint
         if: env.RUN == 'true'
         run: npm run lint
@@ -1000,6 +987,15 @@ jobs:
         with:
           toolchain: 1.99.0
           components: rustfmt, clippy
+
+      # Dependencies only; the workspace crates always rebuild. Written by main
+      # alone, like the backend bridge cache.
+      - name: Cache the Rust core build
+        if: env.RUN == 'true'
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: rust -> target
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       # bb-python (the PyO3 bridge) links libpython for `cargo test`/`clippy`.
       - name: Set up Python
@@ -1539,6 +1535,15 @@ jobs:
         with:
           toolchain: 1.99.0
 
+      # Restores the backend lane's bridge build; never writes it.
+      - name: Restore the backend Rust bridge build
+        if: env.RUN == 'true'
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: rust -> target
+          shared-key: backend-wheel
+          save-if: false
+
       - name: Install dependencies
         if: env.RUN == 'true'
         working-directory: backend
@@ -1737,7 +1742,7 @@ jobs:
         run: test "$(git rev-parse HEAD)" = "$BRAIN_BUDDY_CANDIDATE_SHA"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Expose the Actions cache service to buildx
         uses: actions/github-script@v9
@@ -1836,7 +1841,7 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       # buildx talks to the Actions cache service through these two variables. A
       # `run:` step does not receive them the way a build action does, and
@@ -1858,18 +1863,29 @@ jobs:
       # layer on and rebuilds. Nothing here branches on the diff -- the layers
       # are content addressed, so the cache decides, and it can only ever be
       # wrong in the direction of rebuilding too much.
+      #
+      # Only a push to main writes the layers back. An entry written by a pull
+      # request or a merge group is readable by that ref alone, so those writes
+      # were never reused by anyone else -- yet they filled most of the shared
+      # 10 GB quota and evicted main's own pip, npm and bridge caches.
       - name: Build the stack images, reusing main's layers
+        env:
+          WRITE_CACHE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           # build <dockerfile> <tag> <cache-scope> [extra buildx args...]
           build() {
             local dockerfile="$1" tag="$2" scope="$3"
             shift 3
+            local cache_to=()
+            if [ "${WRITE_CACHE}" = true ]; then
+              cache_to=(--cache-to "type=gha,mode=max,scope=stack-${scope}")
+            fi
             for attempt in 1 2 3; do
               docker buildx build \
                 --file "${dockerfile}" \
                 --tag "${tag}" \
                 --cache-from "type=gha,scope=stack-${scope}" \
-                --cache-to "type=gha,mode=max,scope=stack-${scope}" \
+                "${cache_to[@]}" \
                 "$@" --load . && return 0
               if [ "${attempt}" = 3 ]; then return 1; fi
               sleep "$((attempt * 10))"
@@ -1904,6 +1920,14 @@ jobs:
         uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable action, fixed toolchain
         with:
           toolchain: 1.99.0
+
+      # Restores the backend lane's bridge build; never writes it.
+      - name: Restore the backend Rust bridge build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: rust -> target
+          shared-key: backend-wheel
+          save-if: false
 
       - name: Install modern auth fixture runtime dependencies
         run: python -m pip install ./backend
@@ -1951,22 +1975,6 @@ jobs:
           if-no-files-found: warn
           retention-days: ${{ github.event_name == 'pull_request' && 7 || 30 }}
 
-  # backend, frontend and e2e are real data dependencies: this job downloads
-  # the Allure results each of them uploads, and they are the only three that
-  # emit any. Playwright's results arrive with `e2e`.
-  #
-  # Everything else is here for a different reason: this report is the run's
-  # closing artifact and the pull request comment points at it, so it must not
-  # be generated while any job can still change the verdict.
-  #
-  # That is why the list is EVERY job but `full-ci` rather than only the three
-  # that produce results. Naming just the evidence producers, or only those plus
-  # `docker`, left "last" true by coincidence: `mutation-head` carries
-  # timeout-minutes: 90, so on a change that touches the enforced backend scope
-  # mutmut runs far longer than E2E and Docker together, and the report would
-  # publish its link while `mutation-gate` was still deciding. The rule is
-  # checked by `scripts/validate_ci_artifacts.py workflow`, so a new job cannot
-  # quietly start finishing after the report that claims to summarise it.
   # The CLI ships as its own Cargo workspace (cli/), so like the stack lanes it
   # always runs and gates its steps on RUN, reporting success rather than
   # "skipped" when nothing it builds changed (ADR-0008). A target with nothing
@@ -2011,6 +2019,15 @@ jobs:
         with:
           toolchain: 1.99.0
           components: rustfmt, clippy
+      # Per target. Written only from main, which in practice means the nightly
+      # run: a main push whose SHA passed the merge queue leaves this lane idle.
+      - name: Cache the CLI build
+        if: env.RUN == 'true'
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: cli -> target
+          key: ${{ matrix.target }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Configure Linux native store
         if: env.RUN == 'true' && runner.os == 'Linux'
         run: |
@@ -2111,6 +2128,22 @@ jobs:
           if-no-files-found: error
           retention-days: ${{ github.event_name == 'pull_request' && 7 || 30 }}
 
+  # backend-results, frontend and e2e are real data dependencies: this job
+  # downloads the Allure results each of them uploads, and they are the only
+  # three that emit any. Playwright's results arrive with `e2e`.
+  #
+  # Everything else is here for a different reason: this report is the run's
+  # closing artifact and the pull request comment points at it, so it must not
+  # be generated while any job can still change the verdict.
+  #
+  # That is why the list is EVERY job but `full-ci` rather than only the three
+  # that produce results. Naming just the evidence producers, or only those plus
+  # `docker`, left "last" true by coincidence: `mutation-head` carries
+  # timeout-minutes: 90, so on a change that touches the enforced backend scope
+  # mutmut runs far longer than E2E and Docker together, and the report would
+  # publish its link while `mutation-gate` was still deciding. The rule is
+  # checked by `scripts/validate_ci_artifacts.py workflow`, so a new job cannot
+  # quietly start finishing after the report that claims to summarise it.
   allure-report:
     name: Allure Report
     runs-on: ubuntu-latest
@@ -2173,10 +2206,9 @@ jobs:
         id: aggregate
         # Selected-to-run is NOT the same question as produced-something, and
         # the first version of this asked the wrong one. `changes` can mark a
-        # stack changed while its job is skipped anyway, because the stack jobs
-        # need `spec-kit` and a red spec gate skips them — which is exactly the
-        # state a spec-driven feature branch sits in. The predicate must be the
-        # conjunction: the stack was selected AND its job actually ran.
+        # stack changed while its job is still skipped -- a cancelled run, or a
+        # failed `changes` job that every stack lane needs. The predicate must
+        # be the conjunction: the stack was selected AND its job actually ran.
         #
         # Deliberately NOT "skip if the directory is empty". That would swallow
         # the one case this validator exists for: a stack that ran and produced
