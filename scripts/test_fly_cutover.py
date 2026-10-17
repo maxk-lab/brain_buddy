@@ -48,9 +48,18 @@ elif args[0] == "deploy":
 elif args[:2] == ["volumes", "list"]:
     print(json.dumps([{"id": v} for v in state["volumes"].get(app(), [])]))
 elif args[:3] == ["volumes", "snapshots", "list"]:
-    print(json.dumps([{"id": "snap-" + args[3]}]))
+    gone = args[3] in state.get("destroyed", [])
+    if gone and os.environ.get("FAKE_SNAPSHOT_NOT_FOUND") == "1":
+        sys.stderr.write("Error: volume not found\n")
+        sys.exit(1)
+    if gone and os.environ.get("FAKE_SNAPSHOT_LEFTOVER") != args[3]:
+        print("[]")
+    else:
+        print(json.dumps([{"id": "snap-" + args[3]}]))
 elif args[:2] == ["volumes", "destroy"]:
-    state["volumes"][app()].remove(args[2])
+    if os.environ.get("FAKE_VOLUME_LEFTOVER") != args[2]:
+        state["volumes"][app()].remove(args[2])
+    state.setdefault("destroyed", []).append(args[2])
     save()
 elif args[:2] == ["apps", "destroy"]:
     state["apps"].remove(args[2])
@@ -73,15 +82,14 @@ class FlyCutoverTest(unittest.TestCase):
         self.log = tmp / "calls.log"
         self.evidence = tmp / "evidence.log"
         self.state = tmp / "state.json"
-        self.state.write_text(
-            json.dumps(
-                {
-                    "machines": {"brain-buddy-backend": 1, "brain-buddy-api": 0},
-                    "volumes": {"brain-buddy-backend": ["vol_1", "vol_fork"]},
-                    "apps": ["brain-buddy-backend", "brain-buddy-api"],
-                }
-            )
+        self.pristine = json.dumps(
+            {
+                "machines": {"brain-buddy-backend": 1, "brain-buddy-api": 0},
+                "volumes": {"brain-buddy-backend": ["vol_1", "vol_fork"]},
+                "apps": ["brain-buddy-backend", "brain-buddy-api"],
+            }
         )
+        self.state.write_text(self.pristine)
         self.env = {
             "PATH": f"{bindir}:{os.environ['PATH']}",
             "FAKE_STATE": str(self.state),
@@ -91,6 +99,12 @@ class FlyCutoverTest(unittest.TestCase):
             "VERIFY_SLEEP": "0",
             "SMOKE_CMD": "true",
         }
+
+    def set_state(self, **parts: dict) -> None:
+        state = json.loads(self.state.read_text())
+        for key, value in parts.items():
+            state[key] = {**state.get(key, {}), **value}
+        self.state.write_text(json.dumps(state))
 
     def run_script(self, *args: str, **extra: str) -> subprocess.CompletedProcess[str]:
         env = {**self.env, **extra}
@@ -156,9 +170,7 @@ class FlyCutoverTest(unittest.TestCase):
         self.assertLess(self.index("machines list -a brain-buddy-api", stop), start)
 
     def test_027_FR_019_erase_destroys_volumes_forks_and_app_with_listing(self) -> None:
-        state = json.loads(self.state.read_text())
-        state["volumes"]["other"] = ["vol_copy"]
-        self.state.write_text(json.dumps(state))
+        self.set_state(volumes={"other": ["vol_copy"]}, machines={"brain-buddy-api": 2})
         r = self.run_script(
             "erase",
             FORK_VOLUMES="other:vol_copy",
@@ -180,9 +192,16 @@ class FlyCutoverTest(unittest.TestCase):
         )
         self.assertLess(self.index("volumes destroy vol_1"), self.index("apps destroy"))
         ev = self.evidence.read_text()
-        self.assertIn("snapshot-destroyed-with-volume volume=vol_1 snapshot=snap-vol_1", ev)
+        self.assertIn("snapshot-listed volume=vol_1 snapshot=snap-vol_1", ev)
         self.assertIn("name=laptop-backup", ev)
+        # Counts are observed from re-listing, not asserted by the script.
+        self.assertIn("post-destroy-listing volumes-remaining=0 snapshots-remaining=0", ev)
         self.assertIn("final-listing app=brain-buddy-backend remaining=0", ev)
+        for expected in ("snapshots list vol_1", "snapshots list vol_copy -a other"):
+            self.assertGreaterEqual(
+                len([c for c in self.calls() if expected in c]), 2, expected
+            )
+        self.assertIn("volumes list -a other", "\n".join(self.calls()))
         self.assertEqual(
             json.loads(self.state.read_text())["apps"], ["brain-buddy-api"]
         )
@@ -198,6 +217,94 @@ class FlyCutoverTest(unittest.TestCase):
         self.assertLess(
             self.index("deploy -c fly.frontend.toml"), self.index("volumes destroy vol_1")
         )
+
+    def machines(self) -> dict[str, int]:
+        return json.loads(self.state.read_text())["machines"]
+
+    def test_027_FR_019_rollback_after_erase_is_refused_before_stopping_anything(
+        self,
+    ) -> None:
+        self.set_state(machines={"brain-buddy-backend": 0, "brain-buddy-api": 2})
+        self.assertEqual(self.run_script("erase").returncode, 0)
+        before = len(self.calls())
+        r = self.run_script("rollback")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("rollback unavailable", r.stderr)
+        later = "\n".join(self.calls()[before:])
+        self.assertNotIn("scale", later)
+        self.assertNotIn("deploy", later)
+        self.assertEqual(self.machines()["brain-buddy-api"], 2)
+
+    def test_027_FR_019_rollback_is_refused_when_old_app_has_no_volumes(self) -> None:
+        self.set_state(
+            machines={"brain-buddy-backend": 0, "brain-buddy-api": 2},
+            volumes={"brain-buddy-backend": []},
+        )
+        r = self.run_script("rollback")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("no volumes", r.stderr)
+        self.assertNotIn("scale", "\n".join(self.calls()))
+
+    def test_027_FR_019_erase_requires_new_app_running_and_serving(self) -> None:
+        # Default state: the new app has no machines.
+        r = self.run_script("erase")
+        self.assertNotEqual(r.returncode, 0)
+        self.set_state(machines={"brain-buddy-api": 1})
+        r = self.run_script("erase", SMOKE_CMD="false")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("not serving", r.stderr)
+        calls = "\n".join(self.calls())
+        self.assertNotIn("scale count 0", calls)
+        self.assertNotIn("destroy", calls)
+        self.assertEqual(self.machines()["brain-buddy-backend"], 1)
+
+    def test_027_FR_019_failed_deploy_after_old_stop_rolls_back(self) -> None:
+        r = self.run_script("cutover", FAKE_FAIL_DEPLOY="brain-buddy-api")
+        self.assertNotEqual(r.returncode, 0)
+        stop_old = self.index("scale count 0 -a brain-buddy-backend")
+        failed = self.index("deploy -c fly.api.toml", stop_old)
+        stop_new = self.index("scale count 0 -a brain-buddy-api", failed)
+        verify = self.index("machines list -a brain-buddy-api", stop_new)
+        origin_back = self.index("deploy -c fly.frontend.toml", verify)
+        start_old = self.index("scale count 1 -a brain-buddy-backend", origin_back)
+        self.assertLess(stop_new, start_old)
+        self.assertEqual(self.machines()["brain-buddy-backend"], 1)
+        self.assertEqual(self.machines()["brain-buddy-api"], 0)
+        self.assertNotIn("destroy", "\n".join(self.calls()))
+
+    def test_027_FR_019_failed_frontend_still_restores_the_old_backend(self) -> None:
+        r = self.run_script("cutover", FAKE_FAIL_DEPLOY="brain-buddy-frontend")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self.machines()["brain-buddy-backend"], 1)
+        self.assertEqual(self.machines()["brain-buddy-api"], 0)
+        self.assertIn("frontend still points", r.stderr)
+
+    def test_027_FR_019_leftover_snapshot_or_volume_blocks_app_destroy(self) -> None:
+        for env, counter in (
+            ({"FAKE_SNAPSHOT_LEFTOVER": "vol_1"}, "snapshots-remaining=1"),
+            ({"FAKE_VOLUME_LEFTOVER": "vol_fork"}, "volumes-remaining=1"),
+        ):
+            with self.subTest(env=env):
+                self.state.write_text(self.pristine)
+                self.set_state(machines={"brain-buddy-api": 1})
+                self.evidence.unlink(missing_ok=True)
+                r = self.run_script("erase", **env)
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn(counter, self.evidence.read_text())
+                self.assertNotIn("apps destroy", "\n".join(self.calls()))
+
+    def test_027_FR_019_snapshot_not_found_after_destroy_counts_as_absent(self) -> None:
+        self.set_state(machines={"brain-buddy-api": 1})
+        r = self.run_script("erase", FAKE_SNAPSHOT_NOT_FOUND="1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("snapshots-remaining=0", self.evidence.read_text())
+
+    def test_027_FR_019_erase_failure_after_smoke_does_not_roll_back(self) -> None:
+        r = self.run_script("cutover", ERASE_OLD="1", FAKE_VOLUME_LEFTOVER="vol_1")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self.machines()["brain-buddy-backend"], 0)
+        self.assertGreater(self.machines()["brain-buddy-api"], 0)
+        self.assertNotIn("rolling back", self.evidence.read_text())
 
     def test_027_FR_019_unknown_subcommand_fails(self) -> None:
         self.assertNotEqual(self.run_script("bogus").returncode, 0)
