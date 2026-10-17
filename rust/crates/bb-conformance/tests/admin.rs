@@ -543,7 +543,7 @@ async fn cap_http_068_set_flag_mode_round_trips_and_refuses_bad_input() {
                 .to_string();
             let path = format!("/api/admin/feature-flags/{flag}/mode");
 
-            for mode in ["on", "off"] {
+            for mode in ["selected_users", "on", "off"] {
                 let set = call(&mut w.op, Method::PUT, &path, Some(json!({"mode": mode}))).await;
                 status_is(&set, 200);
                 let entry = flag_entry(&set.json().expect("JSON"), flag);
@@ -772,7 +772,20 @@ async fn cap_mw_020_operator_denials_are_logged_by_route_template() {
             let probe = call(&mut anonymous, Method::GET, "/api/admin/status", None).await;
             status_is(&probe, 401);
 
-            let log = std::fs::read_to_string(&log_path).expect("read server log");
+            // The server may log through a non-blocking writer: poll briefly
+            // until both denial records are on disk.
+            let mut log = String::new();
+            for _ in 0..50 {
+                log = std::fs::read_to_string(&log_path).expect("read server log");
+                let logged = |cid: &str| {
+                    log.lines()
+                        .any(|l| l.contains(cid) && l.contains("Admin access denied"))
+                };
+                if logged(&data_cid) && logged(&probe_cid) {
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
             let data_line = log
                 .lines()
                 .find(|l| l.contains(&data_cid) && l.contains("Admin access denied"))
