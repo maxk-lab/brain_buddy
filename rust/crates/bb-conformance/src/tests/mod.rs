@@ -75,6 +75,32 @@ fn t005_report_is_keyed_by_cap_id_and_fails_if_any_test_fails() {
 }
 
 #[test]
+fn t005_027_fr_001_concurrent_report_writes_keep_every_entry() {
+    const THREADS: usize = 16;
+    let server = format!("unit-lock-{}", crate::control::unique());
+    let handles: Vec<_> = (0..THREADS)
+        .map(|i| {
+            let server = server.clone();
+            std::thread::spawn(move || {
+                let mut r = Report::new(&server);
+                r.record(&[&format!("CAP-LOCK-{i:03}")], &format!("case-{i}"), true);
+                r.write().expect("write report");
+            })
+        })
+        .collect();
+    for h in handles {
+        h.join().expect("writer thread");
+    }
+    let path = Report::path(&server);
+    let text = std::fs::read_to_string(&path).expect("read report");
+    let _ = std::fs::remove_file(&path);
+    let _ = std::fs::remove_file(path.with_extension("json.lock"));
+    let v: serde_json::Value = serde_json::from_str(&text).expect("complete json");
+    let results = v["results"].as_object().expect("results");
+    assert_eq!(results.len(), THREADS, "lost entries: {results:?}");
+}
+
+#[test]
 fn t005_027_fr_016_collector_flags_seeded_text_without_echoing_it() {
     let mut c = LogCollector::default();
     let seed = c.seed();

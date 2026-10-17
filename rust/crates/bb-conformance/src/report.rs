@@ -48,8 +48,20 @@ impl Report {
     }
 
     /// Merges into the existing report (several test binaries share one file).
+    ///
+    /// The read-merge-write runs under an exclusive OS lock on a sidecar file,
+    /// so concurrent threads and concurrent test binaries cannot lose each
+    /// other's entries, and the report is replaced by rename so a reader
+    /// never sees a partial file.
     pub fn write(&self) -> Result<PathBuf> {
         let path = Self::path(&self.server);
+        std::fs::create_dir_all(path.parent().unwrap_or(&path))?;
+        let lock = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(path.with_extension("json.lock"))?;
+        lock.lock()?; // released when `lock` drops, on every exit path
         let mut merged = Report::new(&self.server);
         if let Ok(old) = std::fs::read_to_string(&path)
             && let Ok(Value::Object(prev)) =
@@ -63,8 +75,13 @@ impl Report {
                 merged.record(&[cap], t, v["status"] == "passed");
             }
         }
-        std::fs::create_dir_all(path.parent().unwrap_or(&path))?;
-        std::fs::write(&path, serde_json::to_string_pretty(&merged.to_json())?)?;
+        let tmp = path.with_extension(format!("json.{}.tmp", unique()));
+        let replaced = std::fs::write(&tmp, serde_json::to_string_pretty(&merged.to_json())?)
+            .and_then(|()| std::fs::rename(&tmp, &path));
+        if replaced.is_err() {
+            let _ = std::fs::remove_file(&tmp);
+        }
+        replaced?;
         Ok(path)
     }
 }
